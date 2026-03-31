@@ -1,0 +1,135 @@
+.random-stack-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1rem 3rem;
+  gap: 2rem;
+}
+
+/* ── Stage: the stacked card area ── */
+.random-stack-stage {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  /* 5 behind-cards × 12px offset each = 60px of peeking space above the front card */
+  padding-top: 60px;
+}
+
+/* ── Physical stack cards ── */
+.random-stack-card {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  transform-origin: top center;
+  /* Each card behind the front shifts upward so only its album art peeks above */
+  transform: translateY(calc(var(--stack-index) * -12px))
+    scale(calc(1 - var(--stack-index) * 0.01));
+  z-index: calc(20 - var(--stack-index));
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Prevent interaction on cards behind the front */
+  pointer-events: none;
+}
+
+/* Only the front card (index 0, not exiting) is interactive */
+.random-stack-card:last-child:not(.exiting) {
+  pointer-events: auto;
+}
+
+/* Make stage tall enough to fit the front card naturally */
+.random-stack-card:last-child {
+  position: relative;
+}
+
+.random-stack-card.exiting {
+  transform: translateX(110%) rotate(12deg);
+  opacity: 0;
+  transition:
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.18s ease;
+}
+
+/* ── Controls row ── */
+.random-stack-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 340px;
+}
+
+.random-btn {
+  width: 100%;
+  padding: 0.8rem 1.25rem;
+  border-radius: 8px;
+  border: 2px solid var(--color-border);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.random-btn-next:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.random-btn:hover {
+  background: var(--color-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-text);
+}
+
+.random-stack-count {
+  font-size: 0.85rem;
+  padding: 0rem 0.2rem;
+  background-color: var(--color-text-bg-transparent);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+}
+
+/* ── End-of-stack screen ── */
+.random-stack-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2.5rem 1rem;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.random-stack-done p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+}
+
+.random-stack-done .random-btn-reshuffle {
+  width: auto;
+  padding: 0.75rem 2rem;
+}
+
+/* ── Mobile ── */
+@media (max-width: 767px) {
+  .random-stack-wrapper {
+    padding: 0 0.5rem 2rem;
+    gap: 1.25rem;
+  }
+
+  .random-stack-stage {
+    max-width: 100%;
+  }
+
+  .random-stack-controls {
+    max-width: 100%;
+  }
+
+  /* Next button hidden on mobile — swipe right instead */
+  .random-btn-next {
+    display: none;
+  }
+}

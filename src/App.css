@@ -9,7 +9,7 @@
   margin-inline: auto;
   background: var(--color-surface);
   border-radius: 12px;
-  padding: 0rem 1.25rem 0.5rem 1.25rem;
+  padding: 0rem 1.25rem 0rem 1.25rem;
   display: table;
   text-align: center;
 }
@@ -23,6 +23,24 @@
 .app-header h1 {
   margin: 0;
   font-size: 3rem;
+}
+
+.random-mode-btn {
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-input);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.random-mode-btn:hover {
+  background: var(--color-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-text);
 }
 
 .edit-mode-btn {
@@ -50,7 +68,7 @@
 }
 
 .collection-count {
-  margin: 0.25rem 0 0;
+  margin: 0 0 0.5rem 0;
   color: var(--color-text-secondary);
   font-size: 0.95rem;
   text-align: center;
@@ -128,6 +146,14 @@
 
   .search-sort-row {
     justify-content: flex-end;
+  }
+
+  .app-header h1 {
+    font-size: 2rem;
+  }
+
+  .collection-count {
+    font-size: 0.75rem;
   }
 }
 

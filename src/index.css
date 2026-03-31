@@ -1,6 +1,7 @@
 :root {
   /* ── Theme colors ── */
   --color-page-bg: #2c2419;
+  --color-text-bg-transparent: rgba(36, 31, 25, 0.4);
   --color-surface: #68492e;
   --color-input: #6b4a28;
   --color-hover: #8b6343;

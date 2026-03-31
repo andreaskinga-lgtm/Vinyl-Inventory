@@ -11,6 +11,7 @@ It is currently very much in a pre-alpha state, with a lot of rough edges. No da
 - **Add, edit, and delete records** — each record stores artist, title, year, genre, sub-genres, location, cover art URL, and up to two vinyl image URLs
 - **Search** — live full-text filtering across title, artist, genre, sub-genres, and location
 - **Sort** — by artist, year, or genre (artist sorting strips leading "The"/"A")
+- **Random Flip** - flip through a randomized list of records based on your existing filters
 - **Cover art search** — ported from https://github.com/bendodson/itunes-artwork-finder. Look up artwork via the iTunes Search API, with a country selector for region-specific results. Currently doesn't work very well for me (only has about a 40% hit rate from my testing) so I added a secondary button that opens a more accurate website and prefills the search query
 - **Genre & sub-genre management** — user-configurable lists with inline add/delete
 - **Detail view** — click a card to see an image carousel (cover + vinyl images)
