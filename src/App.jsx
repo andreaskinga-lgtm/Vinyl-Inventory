@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import bgImage from "./assets/RecordCollectionBG.png";
 import RecordList from "./components/RecordList";
+import RandomStack from "./components/RandomStack";
 import AddRecordForm from "./components/AddRecordForm";
 import EditRecordModal from "./components/EditRecordModal";
 import { sampleRecords, generateId } from "./data/records.js";
@@ -21,6 +22,7 @@ function App() {
   const [passwordInput, setPasswordInput] = useState("");
   const [genres, setGenres] = useState(DEFAULT_GENRES);
   const [subGenres, setSubGenres] = useState(DEFAULT_SUB_GENRES);
+  const [randomMode, setRandomMode] = useState(false);
   const initialized = useRef(false);
   const optionsInitialized = useRef(false);
   const bgRef = useRef(null);
@@ -199,60 +201,83 @@ function App() {
         <div className="app-header-top">
           <h1>Vinyl Collection</h1>
         </div>
-        <p className="collection-count">{filtered.length} records</p>
+        {!randomMode && (
+          <p className="collection-count">{filtered.length} records</p>
+        )}
       </header>
 
-      <div className="search-sort-row">
-        <input
-          className="search-input"
-          type="text"
-          placeholder="Search by title, artist, genre, or location…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="sort-select"
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-        >
-          <option value="artist-asc">Artist A–Z</option>
-          <option value="artist-desc">Artist Z–A</option>
-          <option value="year-asc">Year Asc</option>
-          <option value="year-desc">Year Desc</option>
-          <option value="genre-asc">Genre A–Z</option>
-          <option value="genre-desc">Genre Z–A</option>
-        </select>
-
-        <button
-          className={`edit-mode-btn${editMode ? " active" : ""}`}
-          onClick={() => {
-            if (editMode) {
-              setEditMode(false);
-            } else {
-              setPasswordInput("");
-              setShowPasswordPrompt(true);
-            }
-          }}
-        >
-          {editMode ? "Lock" : "Edit Mode"}
-        </button>
-        {editMode && (
-          <AddRecordForm
-            onAdd={handleAdd}
-            genres={genres}
-            subGenres={subGenres}
-            onAddSubGenre={handleAddSubGenre}
-            onDeleteSubGenre={handleDeleteSubGenre}
-            onAddGenre={handleAddGenre}
+      {!randomMode && (
+        <div className="search-sort-row">
+          <input
+            className="search-input"
+            type="search"
+            autoComplete="off"
+            placeholder="Search by title, artist, genre, or location…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-        )}
-      </div>
+          {!randomMode && (
+            <select
+              className="sort-select"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+            >
+              <option value="artist-asc">Artist A–Z</option>
+              <option value="artist-desc">Artist Z–A</option>
+              <option value="year-asc">Year Asc</option>
+              <option value="year-desc">Year Desc</option>
+              <option value="genre-asc">Genre A–Z</option>
+              <option value="genre-desc">Genre Z–A</option>
+            </select>
+          )}
 
-      <RecordList
-        records={filtered}
-        sort={sort}
-        onClickRecord={(record) => setEditingRecord(record)}
-      />
+          {!randomMode && !editMode && (
+            <button
+              className="random-mode-btn"
+              onClick={() => setRandomMode(true)}
+            >
+              Random
+            </button>
+          )}
+          <button
+            className={`edit-mode-btn${editMode ? " active" : ""}`}
+            onClick={() => {
+              if (editMode) {
+                setEditMode(false);
+              } else {
+                setPasswordInput("");
+                setShowPasswordPrompt(true);
+              }
+            }}
+          >
+            {editMode ? "Lock" : "Edit Mode"}
+          </button>
+          {editMode && (
+            <AddRecordForm
+              onAdd={handleAdd}
+              genres={genres}
+              subGenres={subGenres}
+              onAddSubGenre={handleAddSubGenre}
+              onDeleteSubGenre={handleDeleteSubGenre}
+              onAddGenre={handleAddGenre}
+            />
+          )}
+        </div>
+      )}
+
+      {randomMode ? (
+        <RandomStack
+          records={filtered}
+          onBack={() => setRandomMode(false)}
+          onClickRecord={(record) => setEditingRecord(record)}
+        />
+      ) : (
+        <RecordList
+          records={filtered}
+          sort={sort}
+          onClickRecord={(record) => setEditingRecord(record)}
+        />
+      )}
 
       {editingRecord && (
         <EditRecordModal
