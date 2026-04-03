@@ -18,30 +18,30 @@ function recordsKey(recs) {
 function RandomStack({ records, onBack, onClickRecord }) {
   const [stack, setStack] = useState(() => shuffleArray(records));
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [exiting, setExiting] = useState(false);
+  const [exitDirection, setExitDirection] = useState(null);
   const [prevKey, setPrevKey] = useState(() => recordsKey(records));
   const currentKey = recordsKey(records);
   if (prevKey !== currentKey) {
     setPrevKey(currentKey);
     setStack(shuffleArray(records));
     setCurrentIndex(0);
-    setExiting(false);
+    setExitDirection(null);
   }
 
   function handleNext() {
-    if (exiting) return;
-    setExiting(true);
+    if (exitDirection) return;
+    setExitDirection("right");
     setTimeout(() => {
       setCurrentIndex((i) => i + 1);
-      setExiting(false);
+      setExitDirection(null);
     }, 180);
   }
 
   const stageRef = useRef(null);
   const exitingRef = useRef(false);
   useEffect(() => {
-    exitingRef.current = exiting;
-  }, [exiting]);
+    exitingRef.current = !!exitDirection;
+  }, [exitDirection]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -59,12 +59,13 @@ function RandomStack({ records, onBack, onClickRecord }) {
     }
     function onTouchEnd() {
       const dx = curX - startX;
-      if (dx > 50 && !exitingRef.current) {
+      if (Math.abs(dx) > 50 && !exitingRef.current) {
+        const dir = dx > 0 ? "right" : "left";
         exitingRef.current = true;
-        setExiting(true);
+        setExitDirection(dir);
         setTimeout(() => {
           setCurrentIndex((i) => i + 1);
-          setExiting(false);
+          setExitDirection(null);
           exitingRef.current = false;
         }, 180);
       }
@@ -86,7 +87,7 @@ function RandomStack({ records, onBack, onClickRecord }) {
   function handleReshuffle() {
     setStack(shuffleArray(records));
     setCurrentIndex(0);
-    setExiting(false);
+    setExitDirection(null);
   }
 
   const remaining = stack.length - currentIndex;
@@ -119,7 +120,7 @@ function RandomStack({ records, onBack, onClickRecord }) {
               .map((record, i) => (
                 <div
                   key={record.id}
-                  className={`random-stack-card${i === 0 && exiting ? " exiting" : ""}`}
+                  className={`random-stack-card${i === 0 && exitDirection ? ` exiting-${exitDirection}` : ""}`}
                   style={{ "--stack-index": i }}
                 >
                   <RecordCard
@@ -141,7 +142,7 @@ function RandomStack({ records, onBack, onClickRecord }) {
             <button
               className="random-btn random-btn-next"
               onClick={handleNext}
-              disabled={exiting}
+              disabled={!!exitDirection}
             >
               Next
             </button>

@@ -41,8 +41,16 @@
   position: relative;
 }
 
-.random-stack-card.exiting {
+.random-stack-card.exiting-right {
   transform: translateX(110%) rotate(12deg);
+  opacity: 0;
+  transition:
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.18s ease;
+}
+
+.random-stack-card.exiting-left {
+  transform: translateX(-110%) rotate(-12deg);
   opacity: 0;
   transition:
     transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
