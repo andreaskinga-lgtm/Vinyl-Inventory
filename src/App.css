@@ -105,6 +105,24 @@
   white-space: nowrap;
 }
 
+.discogs-import-btn {
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-input);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.discogs-import-btn:hover {
+  background: var(--color-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-text);
+}
+
 .sort-select:focus {
   outline: 2px solid var(--color-focus);
   border-color: transparent;

@@ -2,8 +2,28 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import querystring from "node:querystring";
 import fs from "node:fs";
+import https from "node:https";
 import path from "node:path";
 import { VitePWA } from "vite-plugin-pwa";
+
+// ---------------------------------------------------------------------------
+// Helper: outbound HTTPS GET for server-side proxy plugins
+// ---------------------------------------------------------------------------
+function httpsGet(url, headers) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+      res.on("end", () => resolve({ status: res.statusCode, body: data }));
+    });
+    req.on("error", reject);
+    req.setTimeout(20000, () =>
+      req.destroy(new Error("Discogs request timed out")),
+    );
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Simple JSON-file-backed records API so all devices share the same data.
@@ -278,6 +298,222 @@ function itunesApiPlugin() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Discogs config API — persists { username, token } to data/discogsConfig.json
+// GET  /api/discogs-config  → { username, hasToken }
+// POST /api/discogs-config  → saves { username, token }
+// ---------------------------------------------------------------------------
+function discogsConfigApiPlugin() {
+  const DATA_DIR = path.resolve(process.cwd(), "data");
+  const DATA_FILE = path.join(DATA_DIR, "discogsConfig.json");
+
+  function readConfig() {
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+      }
+    } catch (e) {
+      console.error("[discogs-config-api] Failed to read", DATA_FILE, e);
+    }
+    return null;
+  }
+
+  function writeConfig(cfg) {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DATA_FILE, JSON.stringify(cfg, null, 2));
+  }
+
+  return {
+    name: "discogs-config-api",
+    configureServer(server) {
+      // GET — return username + whether a token is saved (never expose token itself)
+      server.middlewares.use("/api/discogs-config", (req, res, next) => {
+        if (req.method !== "GET") return next();
+        const cfg = readConfig();
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            username: cfg?.username ?? "",
+            hasToken: !!cfg?.token,
+          }),
+        );
+      });
+
+      // POST — save username + token
+      server.middlewares.use("/api/discogs-config", (req, res, next) => {
+        if (req.method !== "POST") return next();
+        let body = "";
+        req.on("data", (chunk) => {
+          body += chunk;
+        });
+        req.on("end", () => {
+          try {
+            const data = JSON.parse(body);
+            if (
+              typeof data.username !== "string" ||
+              typeof data.token !== "string"
+            ) {
+              throw new Error("username and token must be strings");
+            }
+            writeConfig({
+              username: data.username.trim(),
+              token: data.token.trim(),
+            });
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: true }));
+          } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: e.message }));
+          }
+        });
+      });
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Discogs proxy API — server-side HTTPS calls so the token stays off the client
+// GET /api/discogs/collection?username=X&page=1&per_page=100
+// GET /api/discogs/search?artist=X&title=Y
+// ---------------------------------------------------------------------------
+function discogsApiPlugin() {
+  const DATA_DIR = path.resolve(process.cwd(), "data");
+  const DATA_FILE = path.join(DATA_DIR, "discogsConfig.json");
+
+  function readToken() {
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"))?.token ?? null;
+      }
+    } catch (e) {
+      console.error("[discogs-api] Failed to read config", e);
+    }
+    return null;
+  }
+
+  function discogsHeaders(token) {
+    return {
+      Authorization: `Discogs token=${token}`,
+      "User-Agent": "VinylInventory/1.0",
+      Accept: "application/vnd.discogs.v2.discogs+json",
+    };
+  }
+
+  return {
+    name: "discogs-api",
+    configureServer(server) {
+      // GET /api/discogs/collection
+      server.middlewares.use("/api/discogs/collection", (req, res, next) => {
+        if (req.method !== "GET") return next();
+        const qs = new URL(req.url ?? "", "http://localhost");
+
+        const username = qs.searchParams.get("username") ?? "";
+        const page = parseInt(qs.searchParams.get("page") ?? "1", 10) || 1;
+        const perPage = Math.min(
+          parseInt(qs.searchParams.get("per_page") ?? "100", 10) || 100,
+          100,
+        );
+
+        if (!username) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "username is required" }));
+          return;
+        }
+
+        // Accept an inline token passed from the client, fall back to saved one
+        const inlineToken = qs.searchParams.get("token") ?? "";
+        const token = inlineToken || readToken();
+        if (!token) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "No Discogs token configured" }));
+          return;
+        }
+
+        const discogsUrl =
+          `https://api.discogs.com/users/${encodeURIComponent(username)}` +
+          `/collection/folders/0/releases?page=${page}&per_page=${perPage}`;
+
+        httpsGet(discogsUrl, discogsHeaders(token))
+          .then(({ status, body }) => {
+            res.writeHead(status, { "Content-Type": "application/json" });
+            res.end(body);
+          })
+          .catch((e) => {
+            res.writeHead(502, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: e.message }));
+          });
+      });
+
+      // GET /api/discogs/search
+      server.middlewares.use("/api/discogs/search", (req, res, next) => {
+        if (req.method !== "GET") return next();
+        const qs = new URL(req.url ?? "", "http://localhost");
+
+        const artist = qs.searchParams.get("artist") ?? "";
+        const title = qs.searchParams.get("title") ?? "";
+
+        const inlineToken = qs.searchParams.get("token") ?? "";
+        const token = inlineToken || readToken();
+        if (!token) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "No Discogs token configured" }));
+          return;
+        }
+
+        const params = new URLSearchParams({
+          artist,
+          release_title: title,
+          type: "release",
+          per_page: "5",
+        });
+        const discogsUrl = `https://api.discogs.com/database/search?${params}`;
+
+        httpsGet(discogsUrl, discogsHeaders(token))
+          .then(({ status, body }) => {
+            res.writeHead(status, { "Content-Type": "application/json" });
+            res.end(body);
+          })
+          .catch((e) => {
+            res.writeHead(502, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: e.message }));
+          });
+      });
+
+      // GET /api/discogs/release?id=12345
+      server.middlewares.use("/api/discogs/release", (req, res, next) => {
+        if (req.method !== "GET") return next();
+        const qs = new URL(req.url ?? "", "http://localhost");
+
+        const id = qs.searchParams.get("id") ?? "";
+        if (!id) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "id is required" }));
+          return;
+        }
+
+        const token = readToken();
+        if (!token) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "No Discogs token configured" }));
+          return;
+        }
+
+        const discogsUrl = `https://api.discogs.com/releases/${encodeURIComponent(id)}`;
+
+        httpsGet(discogsUrl, discogsHeaders(token))
+          .then(({ status, body }) => {
+            res.writeHead(status, { "Content-Type": "application/json" });
+            res.end(body);
+          })
+          .catch((e) => {
+            res.writeHead(502, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: e.message }));
+          });
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -324,6 +560,8 @@ export default defineConfig({
     recordsApiPlugin(),
     genreOptionsApiPlugin(),
     itunesApiPlugin(),
+    discogsConfigApiPlugin(),
+    discogsApiPlugin(),
   ],
   server: {
     host: true, // listen on all network interfaces (0.0.0.0)

@@ -9,6 +9,7 @@ import {
   GENRES as DEFAULT_GENRES,
   SUB_GENRES as DEFAULT_SUB_GENRES,
 } from "./data/genreOptions";
+import DiscogsImport from "./components/DiscogsImport";
 import "./App.css";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
   const [genres, setGenres] = useState(DEFAULT_GENRES);
   const [subGenres, setSubGenres] = useState(DEFAULT_SUB_GENRES);
   const [randomMode, setRandomMode] = useState(false);
+  const [showDiscogsImport, setShowDiscogsImport] = useState(false);
   const initialized = useRef(false);
   const optionsInitialized = useRef(false);
   const bgRef = useRef(null);
@@ -76,6 +78,30 @@ function App() {
 
   function handleDelete(id) {
     setRecords((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  function handleDiscogsImport(newRecs, updates, deletions = []) {
+    // Collect any new genre / subGenre values from imported records
+    const incomingGenres = newRecs.map((r) => r.genre).filter(Boolean);
+    const incomingSubGenres = newRecs.flatMap((r) => r.subGenres ?? []);
+    for (const g of incomingGenres) handleAddGenre(g);
+    for (const sg of incomingSubGenres) handleAddSubGenre(sg);
+
+    const deletionSet = new Set(deletions);
+    setRecords((prev) => {
+      // Apply enrichment to existing records, excluding deletions
+      const enriched = prev
+        .filter((r) => !deletionSet.has(r.id))
+        .map((r) => {
+          const update = updates.find((u) => u.existingId === r.id);
+          return update ? { ...r, ...update.fields } : r;
+        });
+      // Prepend new records
+      const created = newRecs.map((r) => ({ id: generateId(), ...r }));
+      return [...created, ...enriched];
+    });
+
+    setShowDiscogsImport(false);
   }
 
   function handleEdit(id, updatedFields) {
@@ -253,14 +279,22 @@ function App() {
             {editMode ? "Lock" : "Edit Mode"}
           </button>
           {editMode && (
-            <AddRecordForm
-              onAdd={handleAdd}
-              genres={genres}
-              subGenres={subGenres}
-              onAddSubGenre={handleAddSubGenre}
-              onDeleteSubGenre={handleDeleteSubGenre}
-              onAddGenre={handleAddGenre}
-            />
+            <>
+              <AddRecordForm
+                onAdd={handleAdd}
+                genres={genres}
+                subGenres={subGenres}
+                onAddSubGenre={handleAddSubGenre}
+                onDeleteSubGenre={handleDeleteSubGenre}
+                onAddGenre={handleAddGenre}
+              />
+              <button
+                className="discogs-import-btn"
+                onClick={() => setShowDiscogsImport(true)}
+              >
+                Sync with Discogs
+              </button>
+            </>
           )}
         </div>
       )}
@@ -292,6 +326,13 @@ function App() {
           onAddSubGenre={handleAddSubGenre}
           onDeleteSubGenre={handleDeleteSubGenre}
           onAddGenre={handleAddGenre}
+        />
+      )}
+      {showDiscogsImport && (
+        <DiscogsImport
+          existingRecords={records}
+          onImport={handleDiscogsImport}
+          onClose={() => setShowDiscogsImport(false)}
         />
       )}
       {showPasswordPrompt && (
