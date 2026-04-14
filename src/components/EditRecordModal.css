@@ -373,6 +373,78 @@
   line-height: 1.3;
 }
 
+/* ── Tracklist ── */
+.readonly-tracklist {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.readonly-tracklist-loading {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.readonly-tracklist-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.readonly-tracklist-heading {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin-top: 0.6rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.readonly-tracklist-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+
+.readonly-tracklist-position {
+  min-width: 2rem;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.readonly-tracklist-title {
+  flex: 1;
+  color: var(--color-text);
+}
+
+.readonly-tracklist-duration {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.readonly-tracklist-attribution {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-align: right;
+}
+
+.readonly-tracklist-attribution:hover {
+  color: var(--color-text-secondary);
+}
+
 @media (max-width: 767px) {
   .edit-modal {
     max-width: 400px;

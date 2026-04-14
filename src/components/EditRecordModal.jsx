@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import CoverArtPicker from "./CoverArtPicker";
 import SubGenrePicker from "./SubGenrePicker";
 import "./EditRecordModal.css";
@@ -61,6 +61,22 @@ function EditRecordModal({
   const [initialFormJson] = useState(() =>
     JSON.stringify(normalizeFormData(getInitialFormData(record))),
   );
+
+  const [tracklist, setTracklist] = useState(null);
+  const [tracklistLoading, setTracklistLoading] = useState(
+    () => !!(readOnly && record.discogsId),
+  );
+
+  useEffect(() => {
+    if (!readOnly || !record.discogsId) return;
+    fetch(`/api/discogs/release?id=${encodeURIComponent(record.discogsId)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setTracklist(Array.isArray(data.tracklist) ? data.tracklist : null);
+      })
+      .catch(() => setTracklist(null))
+      .finally(() => setTracklistLoading(false));
+  }, [readOnly, record.discogsId]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -226,6 +242,51 @@ function EditRecordModal({
                 </div>
               )}
             </div>
+
+            {(tracklistLoading || (tracklist && tracklist.length > 0)) && (
+              <div className="readonly-tracklist">
+                <span className="readonly-label">Tracklist</span>
+                {tracklistLoading ? (
+                  <span className="readonly-tracklist-loading">Loading…</span>
+                ) : (
+                  <div className="readonly-tracklist-list">
+                    {tracklist.map((track, i) => {
+                      if (track.type_ === "heading") {
+                        return (
+                          <div key={i} className="readonly-tracklist-heading">
+                            {track.title}
+                          </div>
+                        );
+                      }
+                      if (track.type_ !== "track") return null;
+                      return (
+                        <div key={i} className="readonly-tracklist-item">
+                          <span className="readonly-tracklist-position">
+                            {track.position}
+                          </span>
+                          <span className="readonly-tracklist-title">
+                            {track.title}
+                          </span>
+                          {track.duration && (
+                            <span className="readonly-tracklist-duration">
+                              {track.duration}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <a
+                  className="readonly-tracklist-attribution"
+                  href={`https://www.discogs.com/release/${record.discogsId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Data provided by Discogs
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -17,6 +17,8 @@ It is currently very much in a pre-alpha state, with a lot of rough edges. No da
 - **Detail view** — click a card to see an image carousel (cover + vinyl images)
 - **Edit mode** — gated behind a client-side password prompt. This isn't intended for actual security as it is hardcoded to "EditRecords" - it only exists to give a more user friendly viewing layout for most users and prevent any accidental edits
 - **PWA** — installable as a Progressive Web App with service worker caching
+- **Discogs collection sync** — sync your entire Discogs collection to either import new records or enrich your existing ones by connecting with your username and personal access token.
+- **Discogs tracklist** — Display the tracklist for your records via Discogs API
 
 ## Tech Stack
 
@@ -47,13 +49,17 @@ npm run dev
 
 ## Data & API
 
-During development, three Vite middleware plugins serve a lightweight local API:
+During development, Vite middleware plugins serve a lightweight local API:
 
-| Endpoint                      | Backing File                | Purpose                 |
-| ----------------------------- | --------------------------- | ----------------------- |
-| `GET/POST /api/records`       | `data/records.json`         | Record collection       |
-| `GET/POST /api/genre-options` | `data/genreOptions.json`    | Genre & sub-genre lists |
-| `GET/POST /api.php`           | iTunes Search API (proxied) | Cover art search        |
+| Endpoint                       | Backing File                | Purpose                                  |
+| ------------------------------ | --------------------------- | ---------------------------------------- |
+| `GET/POST /api/records`        | `data/records.json`         | Record collection                        |
+| `GET/POST /api/genre-options`  | `data/genreOptions.json`    | Genre & sub-genre lists                  |
+| `GET/POST /api.php`            | iTunes Search API (proxied) | Cover art search                         |
+| `GET/POST /api/discogs-config` | `data/discogsConfig.json`   | Save/load Discogs username & token       |
+| `GET /api/discogs/collection`  | Discogs API (proxied)       | Fetch user's Discogs collection          |
+| `GET /api/discogs/search`      | Discogs API (proxied)       | Search Discogs releases by artist/title  |
+| `GET /api/discogs/release`     | Discogs API (proxied)       | Fetch full details for a Discogs release |
 
 State changes auto-save via POST requests. A `useRef` guard prevents saving during the initial data load.
 

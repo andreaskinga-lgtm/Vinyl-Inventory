@@ -1,0 +1,677 @@
+/* ── Overlay ── */
+.discogs-import-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+/* ── Modal panel ── */
+.discogs-import-modal {
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: relative;
+}
+
+.discogs-import-modal--wide {
+  max-width: 720px;
+}
+
+/* ── Header ── */
+.discogs-import-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.discogs-import-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.discogs-import-close {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+}
+
+.discogs-import-close:hover {
+  color: var(--color-danger);
+  border-color: transparent;
+}
+
+/* ── Step indicator ── */
+.discogs-import-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.discogs-step {
+  color: var(--color-text-muted);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.discogs-step--active {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.discogs-step--done {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.discogs-step-sep {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+/* ── Connect form ── */
+.discogs-connect-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.discogs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.discogs-field-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.discogs-field input[type="text"],
+.discogs-field input[type="password"] {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-input);
+  color: inherit;
+  font-size: 0.95rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.discogs-field input:focus {
+  outline: 2px solid var(--color-focus);
+  border-color: transparent;
+}
+
+.discogs-field-hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.discogs-field-hint a {
+  color: var(--color-accent);
+}
+
+.discogs-remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.discogs-remember input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-accent);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── Status messages ── */
+.discogs-error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-danger);
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.discogs-progress {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Action buttons ── */
+.discogs-import-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.discogs-import-actions button {
+  flex: 1;
+}
+
+.discogs-import-actions button[type="submit"],
+.discogs-import-actions .primary-btn {
+  background: var(--color-accent);
+  color: var(--color-text);
+  border: none;
+  font-weight: 600;
+}
+
+.discogs-import-actions button[type="submit"]:hover,
+.discogs-import-actions .primary-btn:hover {
+  background: var(--color-accent-hover);
+  border-color: transparent;
+}
+
+.discogs-import-actions .cancel-btn {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 2px solid var(--color-border);
+}
+
+.discogs-import-actions .cancel-btn:hover {
+  border-color: var(--color-accent-hover);
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+/* ── Review sections ── */
+.discogs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.discogs-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.discogs-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.discogs-section-title input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-accent);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.discogs-section-sub {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding-left: 1.5rem;
+}
+
+/* ── Record list ── */
+.discogs-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 340px;
+  overflow-y: auto;
+  border-radius: 6px;
+}
+
+/* ── Record row ── */
+.discogs-record-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  background: var(--color-input);
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.discogs-record-row input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-accent);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.discogs-record-row--unchecked {
+  opacity: 0.45;
+}
+
+.discogs-record-row--match {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.discogs-record-row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  padding: 0.1rem 0;
+}
+
+/* ── Cover thumbnail ── */
+.discogs-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-hover);
+}
+
+.discogs-thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Record text info ── */
+.discogs-record-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.discogs-record-artist {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discogs-record-title {
+  font-size: 0.93rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Meta tags (year, genre) ── */
+.discogs-record-meta {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.discogs-meta-tag {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-hover);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Diff badges ── */
+.discogs-record-badges {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.discogs-badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(160, 116, 72, 0.25);
+  border: 1px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.discogs-badge--off {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+.discogs-badge--link {
+  background: rgba(76, 175, 80, 0.15);
+  border-color: var(--color-success);
+}
+
+/* ── Expand arrow ── */
+.discogs-expand-btn {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  padding: 0 0.2rem;
+  user-select: none;
+}
+
+/* ── Match expanded detail ── */
+.discogs-match-details {
+  padding: 0.6rem 0.5rem 0.4rem 2.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  margin-top: 0.35rem;
+}
+
+.discogs-link-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Per-field diff row ── */
+.discogs-field-diff {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.discogs-field-diff > label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  min-width: 110px;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.discogs-field-diff > label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-accent);
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+}
+
+.discogs-diff-values {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+}
+
+.discogs-diff-current {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  word-break: break-word;
+}
+
+.discogs-diff-arrow {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.discogs-diff-new {
+  color: var(--color-success);
+  font-weight: 600;
+  word-break: break-word;
+}
+
+/* ── Footer ── */
+.discogs-import-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.discogs-summary {
+  flex: 1;
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.discogs-import-footer .discogs-import-actions {
+  flex: none;
+  margin-top: 0;
+  gap: 0.5rem;
+}
+
+.discogs-import-footer .discogs-import-actions button {
+  flex: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* ── New record row wrapper (contains main row + optional picker) ── */
+.discogs-record-row--new-outer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.discogs-record-row-main--new {
+  padding: 0.4rem 0.5rem;
+  cursor: default;
+}
+
+/* ── Manual match button ── */
+.discogs-manual-match-btn {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-accent);
+  color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.discogs-manual-match-btn:hover {
+  background: var(--color-accent-hover);
+  border-color: transparent;
+}
+
+.discogs-manual-match-btn--open {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+/* ── Floating match picker ── */
+.discogs-match-picker {
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.discogs-match-picker-search {
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-input);
+  color: inherit;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.discogs-match-picker-search:focus {
+  outline: 2px solid var(--color-focus);
+  border-color: transparent;
+}
+
+.discogs-match-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.discogs-match-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--color-input);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  width: 100%;
+}
+
+.discogs-match-picker-row:hover {
+  border-color: var(--color-accent);
+  background: var(--color-hover);
+}
+
+.discogs-match-picker-row .discogs-thumb {
+  width: 36px;
+  height: 36px;
+}
+
+.discogs-match-picker-empty {
+  margin: 0;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Attribution notice ── */
+.discogs-attribution {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.discogs-attribution a {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+}
+
+.discogs-attribution a:hover {
+  color: var(--color-text-secondary);
+}
+
+/* ── Empty state ── */
+.discogs-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+/* ── Delete unmatched toggle ── */
+.discogs-delete-enable {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.discogs-delete-enable input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-danger);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.discogs-delete-enable-count {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+/* ── Danger section (not on Discogs) ── */
+.discogs-section--danger .discogs-section-header {
+  border-bottom-color: rgba(255, 107, 107, 0.4);
+}
+
+.discogs-section--danger .discogs-section-title {
+  color: var(--color-danger);
+}
+
+.discogs-section--danger .discogs-section-title input[type="checkbox"] {
+  accent-color: var(--color-danger);
+}
+
+/* ── Danger record row ── */
+.discogs-record-row--danger {
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.discogs-record-row--danger input[type="checkbox"] {
+  accent-color: var(--color-danger);
+}
