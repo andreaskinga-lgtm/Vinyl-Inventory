@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { EventEmitter } from "node:events";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GENRES, SUB_GENRES } from "../src/data/genreOptions.js";
 import { createApiHandler } from "./api-handler.js";
 
@@ -46,6 +46,14 @@ function createResponse() {
 
 function responseJson(response) {
   return JSON.parse(response.body);
+}
+
+function createFetchResponse({ ok = true, status = 200, json }) {
+  return {
+    ok,
+    status,
+    json,
+  };
 }
 
 afterEach(async () => {
@@ -268,6 +276,253 @@ describe("createApiHandler", () => {
 
     expect(response.status).toBe(500);
     expect(responseJson(response).error).toMatch(/already exists|not a directory/);
+  });
+
+  it("builds and validates the iTunes search request for GET", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const fetch = vi.fn().mockResolvedValue(
+      createFetchResponse({
+        json: async () => ({ resultCount: 0, results: [] }),
+      }),
+    );
+    const handler = createApiHandler({ dataDir, fetch });
+    const response = createResponse();
+
+    await handler(
+      createRequest({
+        url: "/api.php?type=request&query=Miles%20Davis%20Kind%20of%20Blue&entity=album&country=us",
+      }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://itunes.apple.com/search?term=Miles+Davis+Kind+of+Blue&country=us&entity=album&limit=25",
+      { headers: { Accept: "application/json" } },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers["Content-Type"]).toBe("application/json");
+    expect(response.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(responseJson(response)).toEqual({
+      url: "https://itunes.apple.com/search?term=Miles+Davis+Kind+of+Blue&country=us&entity=album&limit=25",
+    });
+  });
+
+  it("builds the iTunes lookup request for an id search", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const fetch = vi.fn().mockResolvedValue(
+      createFetchResponse({
+        json: async () => ({ resultCount: 0, results: [] }),
+      }),
+    );
+    const handler = createApiHandler({ dataDir, fetch });
+    const response = createResponse();
+
+    await handler(
+      createRequest({
+        url: "/api.php?type=request&query=123%20456&entity=id&country=ca",
+      }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://itunes.apple.com/lookup?id=123+456&country=ca&limit=25",
+      { headers: { Accept: "application/json" } },
+    );
+    expect(responseJson(response)).toEqual({
+      url: "https://itunes.apple.com/lookup?id=123+456&country=ca&limit=25",
+    });
+  });
+
+  it("rejects an iTunes search without a term", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const fetch = vi.fn();
+    const handler = createApiHandler({ dataDir, fetch });
+    const response = createResponse();
+
+    await handler(
+      createRequest({
+        url: "/api.php?type=request&entity=album&country=us",
+      }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(responseJson(response)).toEqual({ error: "missing query" });
+  });
+
+  it.each([400, 500])(
+    "returns a JSON upstream error for an iTunes HTTP %s response",
+    async (status) => {
+      const dataDir = await createTemporaryDirectory();
+      const fetch = vi.fn().mockResolvedValue(
+        createFetchResponse({
+          ok: false,
+          status,
+          json: async () => ({ error: "upstream failure" }),
+        }),
+      );
+      const handler = createApiHandler({ dataDir, fetch });
+      const response = createResponse();
+
+      await handler(
+        createRequest({
+          url: "/api.php?type=request&query=Kind%20of%20Blue&entity=album&country=us",
+        }),
+        response,
+        () => {
+          throw new Error("unexpected next");
+        },
+      );
+
+      expect(response.status).toBe(502);
+      expect(responseJson(response)).toEqual({
+        error: `iTunes request failed with status ${status}`,
+      });
+    },
+  );
+
+  it("returns a JSON error for invalid iTunes JSON", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const fetch = vi.fn().mockResolvedValue(
+      createFetchResponse({
+        json: async () => {
+          throw new SyntaxError("Unexpected token");
+        },
+      }),
+    );
+    const handler = createApiHandler({ dataDir, fetch });
+    const response = createResponse();
+
+    await handler(
+      createRequest({
+        url: "/api.php?type=request&query=Kind%20of%20Blue&entity=album&country=us",
+      }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(response.status).toBe(502);
+    expect(responseJson(response)).toEqual({
+      error: "Invalid JSON from iTunes",
+    });
+  });
+
+  it("returns a JSON error for an iTunes network failure", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const fetch = vi.fn().mockRejectedValue(new Error("socket closed"));
+    const handler = createApiHandler({ dataDir, fetch });
+    const response = createResponse();
+
+    await handler(
+      createRequest({
+        url: "/api.php?type=request&query=Kind%20of%20Blue&entity=album&country=us",
+      }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(response.status).toBe(502);
+    expect(responseJson(response)).toEqual({
+      error: "iTunes request failed: socket closed",
+    });
+  });
+
+  it("processes iTunes result data submitted by POST", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const handler = createApiHandler({ dataDir });
+    const response = createResponse();
+    const iTunesData = {
+      results: [
+        {
+          artworkUrl100: "https://example.com/100x100bb.jpg",
+          collectionName: "Kind of Blue",
+          artistName: "Miles Davis",
+        },
+      ],
+    };
+
+    await handler(
+      createRequest({
+        method: "POST",
+        url: "/api.php",
+        body: new URLSearchParams({
+          type: "data",
+          entity: "album",
+          json: JSON.stringify(iTunesData),
+        }).toString(),
+      }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers["Content-Type"]).toBe("application/json");
+    expect(response.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(responseJson(response)).toEqual([
+      {
+        url: "https://example.com/600x600bb.jpg",
+        hires: "https://is5-ssl.mzstatic.com/100000x100000-999.jpg",
+        title: "Kind of Blue (by Miles Davis)",
+        artworkUrl100: "https://example.com/100x100bb.jpg",
+        collectionName: "Kind of Blue",
+        artistName: "Miles Davis",
+      },
+    ]);
+  });
+
+  it("rejects malformed iTunes POST JSON", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const handler = createApiHandler({ dataDir });
+    const response = createResponse();
+
+    await handler(
+      createRequest({
+        method: "POST",
+        url: "/api.php",
+        body: "type=data&entity=album&json=%7B%22results%22%3A",
+      }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(response.status).toBe(400);
+    expect(responseJson(response)).toEqual({ error: "bad json" });
+  });
+
+  it("rejects unsupported iTunes methods with an explicit JSON response", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const handler = createApiHandler({ dataDir });
+    const response = createResponse();
+
+    await handler(
+      createRequest({ method: "PATCH", url: "/api.php" }),
+      response,
+      () => {
+        throw new Error("unexpected next");
+      },
+    );
+
+    expect(response.status).toBe(405);
+    expect(response.headers.Allow).toBe("GET, POST");
+    expect(responseJson(response)).toEqual({ error: "Method not allowed" });
   });
 
   it("passes unrelated paths to the next middleware exactly once", async () => {

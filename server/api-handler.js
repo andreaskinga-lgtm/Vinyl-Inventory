@@ -1,13 +1,30 @@
+import querystring from "node:querystring";
+
 import { createJsonStore } from "./json-store.js";
 
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json",
+});
+const ITUNES_HEADERS = Object.freeze({
+  "Access-Control-Allow-Origin": "*",
+});
+const ITUNES_FETCH_OPTIONS = Object.freeze({
+  headers: Object.freeze({
+    Accept: "application/json",
+  }),
 });
 
 class ApiRequestError extends Error {
   constructor(message) {
     super(message);
     this.name = "ApiRequestError";
+  }
+}
+
+class ItunesUpstreamError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ItunesUpstreamError";
   }
 }
 
@@ -139,12 +156,188 @@ function storageErrorMessage(error) {
   return error instanceof Error ? error.message : "Storage failure";
 }
 
+function itunesErrorMessage(error) {
+  return error instanceof Error ? error.message : "iTunes request failed";
+}
+
+function itunesUrl({ query, entity, country }) {
+  const encodedQuery = encodeURIComponent(query).replace(/%20/g, "+");
+  if (entity === "id" || entity === "idAlbum") {
+    return (
+      "https://itunes.apple.com/lookup?id=" +
+      encodedQuery +
+      "&country=" +
+      country +
+      "&limit=25"
+    );
+  }
+
+  return (
+    "https://itunes.apple.com/search?term=" +
+    encodedQuery +
+    "&country=" +
+    country +
+    "&entity=" +
+    entity +
+    "&limit=25"
+  );
+}
+
+async function fetchAndValidateItunesResponse(url, fetchImpl) {
+  let response;
+  try {
+    response = await fetchImpl(url, ITUNES_FETCH_OPTIONS);
+  } catch (error) {
+    throw new ItunesUpstreamError(
+      `iTunes request failed: ${itunesErrorMessage(error)}`,
+    );
+  }
+
+  const status = Number(response?.status);
+  const ok =
+    response?.ok ?? (Number.isInteger(status) && status >= 200 && status < 300);
+  if (!ok) {
+    throw new ItunesUpstreamError(
+      `iTunes request failed with status ${Number.isInteger(status) ? status : "unknown"}`,
+    );
+  }
+
+  try {
+    const payload = await response.json();
+    if (!isObject(payload)) {
+      throw new SyntaxError("iTunes response must be an object");
+    }
+  } catch {
+    throw new ItunesUpstreamError("Invalid JSON from iTunes");
+  }
+}
+
+function processItunesResults(post) {
+  let json;
+  try {
+    json = JSON.parse(typeof post.json === "string" ? post.json : "");
+  } catch {
+    throw new ApiRequestError("bad json");
+  }
+
+  if (!isObject(json)) {
+    throw new ApiRequestError("bad json");
+  }
+
+  const entity =
+    typeof post.entity === "string" && post.entity
+      ? post.entity
+      : "tvSeason";
+  const output = [];
+
+  for (const result of Array.isArray(json.results) ? json.results : []) {
+    if (!isObject(result)) continue;
+
+    if (
+      post.entity === "id" &&
+      result.kind !== "feature-movie" &&
+      result.wrapperType !== "collection"
+    ) {
+      continue;
+    }
+    if (post.entity === "idAlbum" && result.collectionType !== "Album") {
+      continue;
+    }
+
+    const data = {};
+    data.url = (result.artworkUrl100 || "").replace("100x100", "600x600");
+
+    let hires = (result.artworkUrl100 || "").replace(
+      "100x100bb",
+      "100000x100000-999",
+    );
+    try {
+      const parsed = new URL(hires);
+      hires = "https://is5-ssl.mzstatic.com" + parsed.pathname;
+    } catch {
+      // Keep the original artwork URL when it is not an absolute URL.
+    }
+    data.hires = hires;
+    data.title =
+      entity === "movie" ? result.trackName : result.collectionName;
+
+    if (post.entity === "album") {
+      const parts = hires.split("/image/thumb/");
+      if (parts.length === 2) {
+        const segs = parts[1].split("/");
+        segs.pop();
+        data.uncompressed =
+          "https://a5.mzstatic.com/us/r1000/0/" + segs.join("/");
+      }
+    }
+
+    switch (entity) {
+      case "album":
+        data.title =
+          result.collectionName + " (by " + result.artistName + ")";
+        break;
+    }
+
+    if (data.title) {
+      data.artworkUrl100 = result.artworkUrl100;
+      data.collectionName = result.collectionName;
+      data.artistName = result.artistName;
+      output.push(data);
+    }
+  }
+
+  return output;
+}
+
+async function handleItunes(req, res, fetchImpl) {
+  if (req.method !== "GET" && req.method !== "POST") {
+    sendJson(
+      res,
+      405,
+      { error: "Method not allowed" },
+      { ...ITUNES_HEADERS, Allow: "GET, POST" },
+    );
+    return true;
+  }
+
+  if (req.method === "GET") {
+    const params = Object.fromEntries(
+      new URL(req.url ?? "/", "http://localhost").searchParams,
+    );
+    if (params.type !== "request") {
+      return false;
+    }
+
+    if (!params.query) {
+      throw new ApiRequestError("missing query");
+    }
+
+    const url = itunesUrl({
+      query: params.query,
+      entity: params.entity,
+      country: params.country,
+    });
+    // Validate the upstream response while preserving the legacy URL payload;
+    // the browser uses that URL for its JSONP request before POST processing.
+    await fetchAndValidateItunesResponse(url, fetchImpl);
+    sendJson(res, 200, { url }, ITUNES_HEADERS);
+    return true;
+  }
+
+  const post = querystring.parse(await readRequestBody(req));
+  if (post.type !== "data") {
+    return false;
+  }
+
+  sendJson(res, 200, processItunesResults(post), ITUNES_HEADERS);
+  return true;
+}
+
 export function createApiHandler({
   dataDir,
-  fetch,
+  fetch: fetchImpl = globalThis.fetch,
   discogsEnvironment = null,
 }) {
-  void fetch;
   void discogsEnvironment;
 
   const store = createJsonStore({ dataDir });
@@ -179,6 +372,26 @@ export function createApiHandler({
           return;
         }
         sendJson(res, 500, { error: storageErrorMessage(error) });
+      }
+      return;
+    }
+
+    if (pathname === "/api.php") {
+      try {
+        const handled = await handleItunes(req, res, fetchImpl);
+        if (!handled) {
+          sendJson(res, 404, { error: "Not found" }, ITUNES_HEADERS);
+        }
+      } catch (error) {
+        if (error instanceof ApiRequestError) {
+          sendJson(res, 400, { error: error.message }, ITUNES_HEADERS);
+          return;
+        }
+        if (error instanceof ItunesUpstreamError) {
+          sendJson(res, 502, { error: error.message }, ITUNES_HEADERS);
+          return;
+        }
+        sendJson(res, 500, { error: itunesErrorMessage(error) }, ITUNES_HEADERS);
       }
       return;
     }
