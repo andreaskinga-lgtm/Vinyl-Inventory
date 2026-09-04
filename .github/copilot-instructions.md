@@ -36,9 +36,10 @@ npm run dev      # Dev server with API middleware
 npm run build    # Production build (vite build)
 npm run preview  # Preview production build
 npm run lint     # ESLint
+npm test         # Vitest (vitest run) — currently covers src/utils/discogsMapper.js only
 ```
 
-No test runner is configured.
+Vitest is intentionally scoped to `findMatches`/`discogsMapper.js`'s pure-function contract — there is no component-level or DOM test setup.
 
 ## Conventions
 

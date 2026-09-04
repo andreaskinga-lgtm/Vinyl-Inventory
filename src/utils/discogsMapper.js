@@ -2,7 +2,7 @@
  * Normalizes an artist/title string for matching:
  * lowercased, leading article stripped, whitespace collapsed.
  */
-function normalizeStr(str) {
+export function normalizeStr(str) {
   return String(str ?? "")
     .toLowerCase()
     .trim()
@@ -46,18 +46,25 @@ export function mapDiscogsRelease(item) {
 }
 
 /**
- * Returns true if a Discogs-mapped record matches an existing collection record.
- * Primary match: discogsId equality.
- * Fallback: normalized artist + title equality.
+ * Returns true if a Discogs-mapped record and an existing collection record
+ * are bound to the same specific release (discogsId equality). This is the
+ * only match that can apply regardless of the existing record's claimed state.
  */
-function isMatch(discogs, existing) {
-  if (
+function isPrimaryMatch(discogs, existing) {
+  return (
     discogs.discogsId != null &&
     existing.discogsId != null &&
     discogs.discogsId === existing.discogsId
-  ) {
-    return true;
-  }
+  );
+}
+
+/**
+ * Returns true if a Discogs-mapped record and an existing collection record
+ * share a normalized artist + title. This fallback is only ever consulted
+ * for existing records that are still unclaimed (discogsId == null) — a
+ * claimed record must never be re-linked to a different release via this path.
+ */
+function isFallbackMatch(discogs, existing) {
   const dk =
     normalizeStr(discogs.artist) + "\x00" + normalizeStr(discogs.title);
   const ek =
@@ -101,37 +108,59 @@ export function computeFieldsToUpdate(discogs, existing) {
 }
 
 /**
- * Partitions Discogs-mapped records into two groups:
- * - `newRecords`: not in the existing collection
- * - `matchedRecords`: already present; includes the computed field enrichments
+ * Partitions Discogs-mapped records into three groups:
+ * - `newRecords`: not in the existing collection (or all same-title
+ *   candidates are already claimed by a different release) — eligible to be
+ *   added as a new record, e.g. a second pressing of an album already owned.
+ * - `matchedRecords`: exactly one unclaimed existing record shares the
+ *   discogsId or artist+title — auto-matched, with computed field
+ *   enrichments.
+ * - `ambiguousRecords`: more than one unclaimed existing record shares
+ *   artist+title — cannot be auto-matched without guessing which physical
+ *   copy it belongs to; requires manual resolution.
+ *
+ * A record is "claimed" once its `discogsId` is set. Claimed records are
+ * never reassigned to a different incoming release via the artist+title
+ * fallback, even if their own linked release is no longer present in the
+ * fetched Discogs collection.
  *
  * @param {object[]} discogsRecords - Records processed through mapDiscogsRelease
  * @param {object[]} existingRecords - The current local collection
- * @returns {{ newRecords: object[], matchedRecords: object[] }}
+ * @returns {{ newRecords: object[], matchedRecords: object[], ambiguousRecords: object[] }}
  */
 export function findMatches(discogsRecords, existingRecords) {
   const newRecords = [];
   const matchedRecords = [];
+  const ambiguousRecords = [];
 
   for (const discogs of discogsRecords) {
-    const existing = existingRecords.find((e) => isMatch(discogs, e));
-    if (existing) {
+    const primaryMatch = existingRecords.find((e) =>
+      isPrimaryMatch(discogs, e),
+    );
+    if (primaryMatch) {
       // Already linked via discogsId — nothing left to do, skip entirely.
-      if (
-        existing.discogsId != null &&
-        existing.discogsId === discogs.discogsId
-      ) {
-        continue;
-      }
+      continue;
+    }
+
+    // Fallback matching only ever considers unclaimed candidates — a claimed
+    // record can't be re-linked to a different incoming release this way.
+    const fallbackCandidates = existingRecords.filter(
+      (e) => e.discogsId == null && isFallbackMatch(discogs, e),
+    );
+
+    if (fallbackCandidates.length === 0) {
+      newRecords.push(discogs);
+    } else if (fallbackCandidates.length === 1) {
+      const existing = fallbackCandidates[0];
       matchedRecords.push({
         discogs,
         existing,
         fieldsToUpdate: computeFieldsToUpdate(discogs, existing),
       });
     } else {
-      newRecords.push(discogs);
+      ambiguousRecords.push(discogs);
     }
   }
 
-  return { newRecords, matchedRecords };
+  return { newRecords, matchedRecords, ambiguousRecords };
 }
