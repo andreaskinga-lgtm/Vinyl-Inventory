@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { mapDiscogsRelease } from "../utils/discogsMapper";
 import {
-  mapDiscogsRelease,
-  findMatches,
-  computeFieldsToUpdate,
-  normalizeStr,
-} from "../utils/discogsMapper";
+  beginSync,
+  reducer,
+  describePlan,
+  emptyPlan,
+} from "../utils/syncPlan";
 import "./DiscogsImport.css";
 
 const SAVED_TOKEN_PLACEHOLDER = "••••••••";
@@ -15,9 +16,6 @@ const FIELD_LABELS = {
   subGenres: "🎭 Styles",
   year: "📅 Year",
 };
-
-/** User-facing field keys (not discogsId, which is applied silently). */
-const USER_FIELDS = ["coverUrl", "genre", "subGenres", "year"];
 
 function formatFieldValue(field, value) {
   if (field === "subGenres") {
@@ -35,23 +33,6 @@ function Thumb({ url, alt = "" }) {
   return <div className="discogs-thumb discogs-thumb--empty">🎵</div>;
 }
 
-/**
- * Finds an existing claimed (discogsId != null) record sharing normalized
- * artist+title with a "new" release — used only to render an informational
- * hint explaining why a release that looks like a duplicate showed up as new.
- */
-function findClaimedSibling(discogs, existingRecords) {
-  const key = normalizeStr(discogs.artist) + "\x00" + normalizeStr(discogs.title);
-  if (key === "\x00") return null;
-  return (
-    existingRecords.find(
-      (e) =>
-        e.discogsId != null &&
-        normalizeStr(e.artist) + "\x00" + normalizeStr(e.title) === key,
-    ) ?? null
-  );
-}
-
 function DiscogsImport({ existingRecords, onImport, onClose }) {
   // ── Phase "connect" state ──────────────────────────────────────────────
   const [phase, setPhase] = useState("connect");
@@ -63,31 +44,22 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   const [progress, setProgress] = useState(null); // { page, totalPages }
 
   // ── Phase "review" state ───────────────────────────────────────────────
-  const [newRecords, setNewRecords] = useState([]);
-  const [matchedRecords, setMatchedRecords] = useState([]);
-  const [ambiguousRecords, setAmbiguousRecords] = useState([]);
-  // selectedNew: Set of discogsId (string) keys
-  const [selectedNew, setSelectedNew] = useState(new Set());
-  // selectedAmbiguous: Set of discogsId (string) keys — starts empty; ambiguous
-  // records must never be silently imported, so importing one requires the
-  // user to explicitly check it (or resolve it via the manual match picker).
-  const [selectedAmbiguous, setSelectedAmbiguous] = useState(new Set());
-  // matchSelections: { [existingId]: { enabled: bool, fields: { coverUrl?: bool, … } } }
-  const [matchSelections, setMatchSelections] = useState({});
+  // The whole review — what this sync will do to the collection — lives in a
+  // single plan value; everything derived from it is recomputed by
+  // describePlan, never stored. Only genuine view state stays here.
+  const [plan, setPlan] = useState(emptyPlan);
+  const dispatch = useCallback(
+    (intent) => setPlan((prev) => reducer(prev, intent)),
+    [],
+  );
+  const view = useMemo(() => describePlan(plan), [plan]);
+
   const [expandedMatch, setExpandedMatch] = useState(null);
-  // Manual match picker — matchingKey is namespaced "new:<key>" or "amb:<key>"
+  // Manual match picker — matchingKey is a plan entry key ("r0", "r1", …)
   const [matchingKey, setMatchingKey] = useState(null);
   const [manualMatchSearch, setManualMatchSearch] = useState("");
   const [pickerAnchorY, setPickerAnchorY] = useState(null);
-  // Reassignment confirmation: set when the user picks an existing record
-  // that's already claimed by a different discogsId.
-  const [pendingReassign, setPendingReassign] = useState(null);
   const modalRef = useRef(null);
-  // Delete unmatched
-  const [enableDeleteUnmatched, setEnableDeleteUnmatched] = useState(false);
-  const [selectedForDeletion, setSelectedForDeletion] = useState(new Set());
-  // Full set of discogsIds present in the fetched collection (including already-linked records)
-  const [fetchedDiscogsIds, setFetchedDiscogsIds] = useState(new Set());
 
   // Pre-fill saved config on mount
   useEffect(() => {
@@ -104,15 +76,6 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   }, []);
 
   // ── Helpers ─────────────────────────────────────────────────────────
-  function newRecordKey(record, index) {
-    return record.discogsId != null ? String(record.discogsId) : `idx-${index}`;
-  }
-
-  /** Namespaced key for the manual-match picker, shared by new & ambiguous records. */
-  function pickerKey(bucket, record, index) {
-    return `${bucket}:${newRecordKey(record, index)}`;
-  }
-
   function fetchPage(page, per_page) {
     const params = new URLSearchParams({
       username: username.trim(),
@@ -192,41 +155,10 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
         }
       }
 
-      // Map and partition
+      // Everything above this line is the network; everything below is a pure
+      // function of (allReleases, existingRecords).
       const mapped = allReleases.map(mapDiscogsRelease);
-      const {
-        newRecords: nr,
-        matchedRecords: mr,
-        ambiguousRecords: ar,
-      } = findMatches(mapped, existingRecords);
-
-      // Store every discogsId from the fetched collection so we can detect
-      // local records whose Discogs entry has since been removed.
-      const allFetchedIds = new Set(
-        mapped.map((r) => r.discogsId).filter(Boolean),
-      );
-
-      // Initialise selection state for new records
-      const initSelectedNew = new Set(nr.map((r, i) => newRecordKey(r, i)));
-
-      // Initialise per-field toggles for matched records
-      const initMatchSels = {};
-      for (const m of mr) {
-        const fields = {};
-        for (const f of USER_FIELDS) {
-          if (f in m.fieldsToUpdate) fields[f] = true;
-        }
-        initMatchSels[m.existing.id] = { enabled: true, fields };
-      }
-
-      setNewRecords(nr);
-      setMatchedRecords(mr);
-      setAmbiguousRecords(ar);
-      setSelectedNew(initSelectedNew);
-      // Ambiguous records start unselected — see selectedAmbiguous comment above.
-      setSelectedAmbiguous(new Set());
-      setMatchSelections(initMatchSels);
-      setFetchedDiscogsIds(allFetchedIds);
+      setPlan(beginSync(mapped, existingRecords));
       setPhase("review");
     } catch (err) {
       setError(err.message);
@@ -236,69 +168,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
     }
   }
 
-  // ── Review interactions ──────────────────────────────────────────────
-  function toggleNew(key) {
-    setSelectedNew((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  }
-
-  function toggleAllNew(checked) {
-    setSelectedNew(
-      checked
-        ? new Set(newRecords.map((r, i) => newRecordKey(r, i)))
-        : new Set(),
-    );
-  }
-
-  function toggleAmbiguous(key) {
-    setSelectedAmbiguous((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  }
-
-  function toggleAllAmbiguous(checked) {
-    setSelectedAmbiguous(
-      checked
-        ? new Set(ambiguousRecords.map((a, i) => newRecordKey(a.discogs, i)))
-        : new Set(),
-    );
-  }
-
-  function toggleMatch(existingId, checked) {
-    setMatchSelections((prev) => ({
-      ...prev,
-      [existingId]: { ...prev[existingId], enabled: checked },
-    }));
-  }
-
-  function toggleAllMatches(checked) {
-    setMatchSelections((prev) => {
-      const next = {};
-      for (const [id, sel] of Object.entries(prev)) {
-        next[id] = { ...sel, enabled: checked };
-      }
-      return next;
-    });
-  }
-
-  function toggleMatchField(existingId, field, checked) {
-    setMatchSelections((prev) => ({
-      ...prev,
-      [existingId]: {
-        ...prev[existingId],
-        fields: { ...prev[existingId].fields, [field]: checked },
-      },
-    }));
-  }
-
   // ── Manual match ─────────────────────────────────────────────────────
-  // `key` is namespaced ("new:<key>" or "amb:<key>") so the same picker UI
-  // can resolve either a new record or an ambiguous one.
   function openMatchPicker(key, buttonEl) {
     if (matchingKey === key) {
       setMatchingKey(null);
@@ -316,180 +186,20 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
     }
   }
 
-  /** Resolves a namespaced picker key to its source discogs record. */
-  function findPickerSourceRecord(key) {
-    const [bucket, ...rest] = key.split(":");
-    const rawKey = rest.join(":");
-    const list =
-      bucket === "amb" ? ambiguousRecords.map((a) => a.discogs) : newRecords;
-    const idx = list.findIndex((r, i) => newRecordKey(r, i) === rawKey);
-    return idx === -1 ? null : { bucket, idx, discogsRecord: list[idx] };
-  }
-
-  function pickManualMatch(key, existingRecord) {
-    // Reassigning a record that's already claimed by a *different* release
-    // needs explicit confirmation before proceeding.
-    const source = findPickerSourceRecord(key);
-    if (!source) return;
-    if (
-      existingRecord.discogsId != null &&
-      existingRecord.discogsId !== source.discogsRecord.discogsId
-    ) {
-      setPendingReassign({ key, existingRecord });
-      return;
-    }
-    handleManualMatch(key, existingRecord);
-  }
-
-  function handleManualMatch(key, existingRecord) {
-    const source = findPickerSourceRecord(key);
-    if (!source) return;
-    const { bucket, idx, discogsRecord } = source;
-    const fieldsToUpdate = computeFieldsToUpdate(discogsRecord, existingRecord);
-
-    // Build per-field toggle state for the new match entry
-    const fields = {};
-    for (const f of USER_FIELDS) {
-      if (f in fieldsToUpdate) fields[f] = true;
-    }
-
-    setMatchedRecords((prev) => [
-      ...prev,
-      { discogs: discogsRecord, existing: existingRecord, fieldsToUpdate },
-    ]);
-    setMatchSelections((prev) => ({
-      ...prev,
-      [existingRecord.id]: { enabled: true, fields },
-    }));
-    if (bucket === "amb") {
-      setAmbiguousRecords((prev) => prev.filter((_, i) => i !== idx));
-      setSelectedAmbiguous((prev) => {
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
-    } else {
-      setNewRecords((prev) => prev.filter((_, i) => i !== idx));
-      setSelectedNew((prev) => {
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
-    }
+  function closeMatchPicker() {
     setMatchingKey(null);
     setManualMatchSearch("");
-    setPendingReassign(null);
   }
 
-  function confirmReassign() {
-    if (!pendingReassign) return;
-    handleManualMatch(pendingReassign.key, pendingReassign.existingRecord);
-  }
-
-  function cancelReassign() {
-    setPendingReassign(null);
-  }
-
-  // ── Delete unmatched ──────────────────────────────────────────────
-  // Deletion is irreversible, so enabling the option selects nothing: the user
-  // opts in per record, or uses the select-all control once.
-  function toggleEnableDeleteUnmatched(checked) {
-    setEnableDeleteUnmatched(checked);
-    setSelectedForDeletion(new Set());
-  }
-
-  function toggleDeletion(id) {
-    setSelectedForDeletion((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-
-  function toggleAllDeletions(checked, unmatchedList) {
-    setSelectedForDeletion(
-      checked ? new Set(unmatchedList.map((r) => r.id)) : new Set(),
-    );
+  function pickManualMatch(releaseKey, existingRecord) {
+    // The plan decides whether this needs a reassignment confirmation.
+    dispatch({ type: "matchManually", releaseKey, recordId: existingRecord.id });
+    closeMatchPicker();
   }
 
   // ── Sync ───────────────────────────────────────────────────────────
-  function handleSync(unmatchedList) {
-    const toImport = [
-      ...newRecords.filter((r, i) => selectedNew.has(newRecordKey(r, i))),
-      ...ambiguousRecords
-        .filter((a, i) => selectedAmbiguous.has(newRecordKey(a.discogs, i)))
-        .map((a) => a.discogs),
-    ];
-
-    const updates = matchedRecords
-      .filter((m) => matchSelections[m.existing.id]?.enabled)
-      .map((m) => {
-        const sel = matchSelections[m.existing.id];
-        const fieldsToApply = { discogsId: m.fieldsToUpdate.discogsId };
-        for (const [field, on] of Object.entries(sel.fields)) {
-          if (on && field in m.fieldsToUpdate) {
-            fieldsToApply[field] = m.fieldsToUpdate[field];
-          }
-        }
-        return { existingId: m.existing.id, fields: fieldsToApply };
-      });
-
-    const toDelete = enableDeleteUnmatched
-      ? unmatchedList
-          .filter((r) => selectedForDeletion.has(r.id))
-          .map((r) => r.id)
-      : [];
-
-    onImport(toImport, updates, toDelete);
-  }
-
-  // ── Derived counts ───────────────────────────────────────────────────
-  // Records in the current collection that have no Discogs counterpart.
-  // Excludes records being enriched in this import (matchedRecords).
-  // A record with a discogsId is only excluded if that ID is confirmed present
-  // in the fetched collection — if it was removed from Discogs/the user's
-  // collection it remains eligible for deletion.
-  // Candidates of an ambiguous release are excluded too: the sync is offering
-  // them for manual matching, so they are not "not on Discogs" — listing them
-  // here would let one click delete every pressing of the album.
-  const matchedExistingIds = new Set(matchedRecords.map((m) => m.existing.id));
-  const ambiguousCandidateIds = new Set(
-    ambiguousRecords.flatMap((a) => a.candidateIds),
-  );
-  const unmatchedExisting = existingRecords.filter(
-    (e) =>
-      !matchedExistingIds.has(e.id) &&
-      !ambiguousCandidateIds.has(e.id) &&
-      (!e.discogsId || !fetchedDiscogsIds.has(e.discogsId)),
-  );
-
-  const importCount = selectedNew.size + selectedAmbiguous.size;
-  const updateCount = matchedRecords.filter(
-    (m) => matchSelections[m.existing.id]?.enabled,
-  ).length;
-  const deleteCount = enableDeleteUnmatched ? selectedForDeletion.size : 0;
-  const allNewChecked =
-    newRecords.length > 0 && selectedNew.size === newRecords.length;
-  const allAmbiguousChecked =
-    ambiguousRecords.length > 0 &&
-    selectedAmbiguous.size === ambiguousRecords.length;
-  const allMatchesEnabled =
-    matchedRecords.length > 0 &&
-    Object.values(matchSelections).every((s) => s.enabled);
-
-  function summaryText() {
-    const parts = [];
-    if (importCount > 0)
-      parts.push(
-        `Import ${importCount} new record${importCount !== 1 ? "s" : ""}`,
-      );
-    if (updateCount > 0)
-      parts.push(
-        `update ${updateCount} existing record${updateCount !== 1 ? "s" : ""}`,
-      );
-    if (deleteCount > 0)
-      parts.push(`delete ${deleteCount} record${deleteCount !== 1 ? "s" : ""}`);
-    return parts.length > 0 ? parts.join(", ") : "No changes selected";
+  function handleSync() {
+    onImport(view.toImport, view.updates, view.deletions);
   }
 
   // ── Render ───────────────────────────────────────────────────────────
@@ -612,20 +322,14 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
         {/* ── Phase B: Review & Sync ── */}
         {phase === "review" &&
           (() => {
-            const alreadyMatchedIds = new Set(
-              matchedRecords.map((m) => m.existing.id),
-            );
-            const pickableExisting = existingRecords.filter(
-              (e) => !alreadyMatchedIds.has(e.id),
-            );
             const searchLower = manualMatchSearch.toLowerCase();
             const filteredExisting = manualMatchSearch
-              ? pickableExisting.filter(
+              ? view.pickableExisting.filter(
                   (e) =>
                     e.artist.toLowerCase().includes(searchLower) ||
                     e.title.toLowerCase().includes(searchLower),
                 )
-              : pickableExisting;
+              : view.pickableExisting;
 
             return (
               <>
@@ -692,10 +396,10 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                 )}
 
                 {/* Reassign confirmation */}
-                {pendingReassign && (
+                {view.pendingReassign && (
                   <div
                     className="discogs-reassign-overlay"
-                    onClick={cancelReassign}
+                    onClick={() => dispatch({ type: "cancelReassignment" })}
                   >
                     <div
                       className="discogs-reassign-dialog"
@@ -703,21 +407,25 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                     >
                       <p>
                         This copy is already linked to a different release
-                        (ID: {pendingReassign.existingRecord.discogsId}) —
+                        (ID: {view.pendingReassign.existingRecord.discogsId}) —
                         reassign anyway?
                       </p>
                       <div className="discogs-import-actions">
                         <button
                           type="button"
                           className="cancel-btn"
-                          onClick={cancelReassign}
+                          onClick={() =>
+                            dispatch({ type: "cancelReassignment" })
+                          }
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
                           className="primary-btn"
-                          onClick={confirmReassign}
+                          onClick={() =>
+                            dispatch({ type: "confirmReassignment" })
+                          }
                         >
                           Reassign anyway
                         </button>
@@ -727,35 +435,38 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                 )}
 
                 {/* New Records */}
-                {newRecords.length > 0 && (
+                {view.newEntries.length > 0 && (
                   <section className="discogs-section">
                     <div className="discogs-section-header">
                       <label className="discogs-section-title">
                         <input
                           type="checkbox"
-                          checked={allNewChecked}
-                          onChange={(e) => toggleAllNew(e.target.checked)}
+                          checked={view.allNewChecked}
+                          onChange={(e) =>
+                            dispatch({
+                              type: "toggleAllImports",
+                              bucket: "new",
+                              on: e.target.checked,
+                            })
+                          }
                         />
-                        New Records ({newRecords.length})
+                        New Records ({view.newEntries.length})
                       </label>
                       <span className="discogs-section-sub">
                         These will be added to your collection
                       </span>
                     </div>
                     <div className="discogs-record-list">
-                      {newRecords.map((record, i) => {
-                        const rawKey = newRecordKey(record, i);
-                        const key = pickerKey("new", record, i);
-                        const checked = selectedNew.has(rawKey);
+                      {view.newEntries.map((entry) => {
+                        const record = entry.discogs;
+                        const key = entry.key;
+                        const checked = entry.selected;
                         const isPickerOpen = matchingKey === key;
-                        const claimedSibling = findClaimedSibling(
-                          record,
-                          existingRecords,
-                        );
+                        const claimedSibling = entry.claimedSibling;
 
                         return (
                           <div
-                            key={rawKey}
+                            key={key}
                             className={`discogs-record-row discogs-record-row--new-outer${checked ? "" : " discogs-record-row--unchecked"}`}
                           >
                             {/* Main row */}
@@ -763,7 +474,12 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                               <input
                                 type="checkbox"
                                 checked={checked}
-                                onChange={() => toggleNew(rawKey)}
+                                onChange={() =>
+                                  dispatch({
+                                    type: "toggleImport",
+                                    releaseKey: key,
+                                  })
+                                }
                               />
                               <Thumb url={record.coverUrl} alt={record.title} />
                               <div className="discogs-record-info">
@@ -818,18 +534,22 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                 )}
 
                 {/* Ambiguous Records */}
-                {ambiguousRecords.length > 0 && (
+                {view.ambiguousEntries.length > 0 && (
                   <section className="discogs-section discogs-section--ambiguous">
                     <div className="discogs-section-header">
                       <label className="discogs-section-title">
                         <input
                           type="checkbox"
-                          checked={allAmbiguousChecked}
+                          checked={view.allAmbiguousChecked}
                           onChange={(e) =>
-                            toggleAllAmbiguous(e.target.checked)
+                            dispatch({
+                              type: "toggleAllImports",
+                              bucket: "ambiguous",
+                              on: e.target.checked,
+                            })
                           }
                         />
-                        Needs Manual Match ({ambiguousRecords.length})
+                        Needs Manual Match ({view.ambiguousEntries.length})
                       </label>
                       <span className="discogs-section-sub">
                         Multiple existing records share this artist/title —
@@ -837,23 +557,27 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                       </span>
                     </div>
                     <div className="discogs-record-list">
-                      {ambiguousRecords.map((entry, i) => {
+                      {view.ambiguousEntries.map((entry) => {
                         const record = entry.discogs;
-                        const rawKey = newRecordKey(record, i);
-                        const key = pickerKey("amb", record, i);
-                        const checked = selectedAmbiguous.has(rawKey);
+                        const key = entry.key;
+                        const checked = entry.selected;
                         const isPickerOpen = matchingKey === key;
 
                         return (
                           <div
-                            key={rawKey}
+                            key={key}
                             className={`discogs-record-row discogs-record-row--new-outer${checked ? "" : " discogs-record-row--unchecked"}`}
                           >
                             <div className="discogs-record-row-main discogs-record-row-main--new">
                               <input
                                 type="checkbox"
                                 checked={checked}
-                                onChange={() => toggleAmbiguous(rawKey)}
+                                onChange={() =>
+                                  dispatch({
+                                    type: "toggleImport",
+                                    releaseKey: key,
+                                  })
+                                }
                               />
                               <Thumb url={record.coverUrl} alt={record.title} />
                               <div className="discogs-record-info">
@@ -895,16 +619,22 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                 )}
 
                 {/* Matched Records */}
-                {matchedRecords.length > 0 && (
+                {view.matches.length > 0 && (
                   <section className="discogs-section">
                     <div className="discogs-section-header">
                       <label className="discogs-section-title">
                         <input
                           type="checkbox"
-                          checked={allMatchesEnabled}
-                          onChange={(e) => toggleAllMatches(e.target.checked)}
+                          checked={view.allMatchesEnabled}
+                          onChange={(e) =>
+                            dispatch({
+                              type: "toggleAllImports",
+                              bucket: "matched",
+                              on: e.target.checked,
+                            })
+                          }
                         />
-                        Matched Records ({matchedRecords.length})
+                        Matched Records ({view.matches.length})
                       </label>
                       <span className="discogs-section-sub">
                         Already in your collection — Discogs data will enrich
@@ -912,18 +642,14 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                       </span>
                     </div>
                     <div className="discogs-record-list">
-                      {matchedRecords.map((m) => {
-                        const sel = matchSelections[m.existing.id] ?? {
-                          enabled: true,
-                          fields: {},
-                        };
+                      {view.matches.map((m) => {
                         const isExpanded = expandedMatch === m.existing.id;
-                        const userFieldKeys = Object.keys(sel.fields);
+                        const userFieldKeys = Object.keys(m.fields);
 
                         return (
                           <div
                             key={m.existing.id}
-                            className={`discogs-record-row discogs-record-row--match${sel.enabled ? "" : " discogs-record-row--unchecked"}`}
+                            className={`discogs-record-row discogs-record-row--match${m.enabled ? "" : " discogs-record-row--unchecked"}`}
                           >
                             {/* Main row */}
                             <div
@@ -936,10 +662,14 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                             >
                               <input
                                 type="checkbox"
-                                checked={sel.enabled}
+                                checked={m.enabled}
                                 onChange={(e) => {
                                   e.stopPropagation();
-                                  toggleMatch(m.existing.id, e.target.checked);
+                                  dispatch({
+                                    type: "setMatchEnabled",
+                                    recordId: m.existing.id,
+                                    on: e.target.checked,
+                                  });
                                 }}
                               />
                               <Thumb
@@ -959,7 +689,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                                   userFieldKeys.map((field) => (
                                     <span
                                       key={field}
-                                      className={`discogs-badge${sel.fields[field] ? "" : " discogs-badge--off"}`}
+                                      className={`discogs-badge${m.fields[field] ? "" : " discogs-badge--off"}`}
                                     >
                                       {FIELD_LABELS[field]}
                                     </span>
@@ -993,13 +723,14 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                                       <label>
                                         <input
                                           type="checkbox"
-                                          checked={sel.fields[field]}
+                                          checked={m.fields[field]}
                                           onChange={(e) =>
-                                            toggleMatchField(
-                                              m.existing.id,
+                                            dispatch({
+                                              type: "setFieldEnabled",
+                                              recordId: m.existing.id,
                                               field,
-                                              e.target.checked,
-                                            )
+                                              on: e.target.checked,
+                                            })
                                           }
                                         />
                                         {FIELD_LABELS[field]}
@@ -1033,54 +764,52 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                   </section>
                 )}
 
-                {newRecords.length === 0 &&
-                  matchedRecords.length === 0 &&
-                  ambiguousRecords.length === 0 && (
-                    <div className="discogs-empty">
-                      <p>
-                        No new records found to sync in this Discogs
-                        collection.
-                      </p>
-                    </div>
-                  )}
+                {view.isEmpty && (
+                  <div className="discogs-empty">
+                    <p>
+                      No new records found to sync in this Discogs collection.
+                    </p>
+                  </div>
+                )}
 
                 {/* Delete unmatched toggle */}
                 <label className="discogs-delete-enable">
                   <input
                     type="checkbox"
-                    checked={enableDeleteUnmatched}
+                    checked={view.deletionsEnabled}
                     onChange={(e) =>
-                      toggleEnableDeleteUnmatched(e.target.checked)
+                      dispatch({
+                        type: "setDeletionsEnabled",
+                        on: e.target.checked,
+                      })
                     }
                   />
                   <span>Also delete records not found in Discogs</span>
-                  {unmatchedExisting.length > 0 && (
+                  {view.unmatched.length > 0 && (
                     <span className="discogs-delete-enable-count">
-                      ({unmatchedExisting.length} record
-                      {unmatchedExisting.length !== 1 ? "s" : ""})
+                      ({view.unmatched.length} record
+                      {view.unmatched.length !== 1 ? "s" : ""})
                     </span>
                   )}
                 </label>
 
                 {/* Not on Discogs */}
-                {enableDeleteUnmatched && unmatchedExisting.length > 0 && (
+                {view.deletionsEnabled && view.unmatched.length > 0 && (
                   <section className="discogs-section discogs-section--danger">
                     <div className="discogs-section-header">
                       <label className="discogs-section-title">
                         <input
                           type="checkbox"
-                          checked={
-                            selectedForDeletion.size ===
-                            unmatchedExisting.length
-                          }
+                          checked={view.allDeletionsChecked}
                           onChange={(e) =>
-                            toggleAllDeletions(
-                              e.target.checked,
-                              unmatchedExisting,
-                            )
+                            dispatch({
+                              type: "toggleAllImports",
+                              bucket: "deletions",
+                              on: e.target.checked,
+                            })
                           }
                         />
-                        Not on Discogs ({unmatchedExisting.length})
+                        Not on Discogs ({view.unmatched.length})
                       </label>
                       <span className="discogs-section-sub">
                         Checked records will be permanently deleted from your
@@ -1088,8 +817,8 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                       </span>
                     </div>
                     <div className="discogs-record-list">
-                      {unmatchedExisting.map((record) => {
-                        const checked = selectedForDeletion.has(record.id);
+                      {view.unmatched.map((record) => {
+                        const checked = view.selectedDeletions.has(record.id);
                         return (
                           <div
                             key={record.id}
@@ -1100,7 +829,12 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                             <input
                               type="checkbox"
                               checked={checked}
-                              onChange={() => toggleDeletion(record.id)}
+                              onChange={() =>
+                                dispatch({
+                                  type: "toggleDeletion",
+                                  recordId: record.id,
+                                })
+                              }
                             />
                             <Thumb url={record.coverUrl} alt={record.title} />
                             <div className="discogs-record-info">
@@ -1130,7 +864,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                   </section>
                 )}
 
-                {enableDeleteUnmatched && unmatchedExisting.length === 0 && (
+                {view.deletionsEnabled && view.unmatched.length === 0 && (
                   <div className="discogs-empty">
                     <p>All records in your collection have a Discogs match.</p>
                   </div>
@@ -1138,7 +872,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
 
                 {/* Footer */}
                 <div className="discogs-import-footer">
-                  <span className="discogs-summary">{summaryText()}</span>
+                  <span className="discogs-summary">{view.summary}</span>
                   <div className="discogs-import-actions">
                     <button
                       type="button"
@@ -1150,11 +884,11 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                     <button
                       type="button"
                       className="primary-btn"
-                      onClick={() => handleSync(unmatchedExisting)}
+                      onClick={handleSync}
                       disabled={
-                        importCount === 0 &&
-                        updateCount === 0 &&
-                        deleteCount === 0
+                        view.counts.imports === 0 &&
+                        view.counts.updates === 0 &&
+                        view.counts.deletions === 0
                       }
                     >
                       Sync

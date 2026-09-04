@@ -11,6 +11,20 @@ export function normalizeStr(str) {
 }
 
 /**
+ * The identity used by artist+title fallback matching: normalized artist and
+ * title joined by a separator that cannot occur in either. Returns `null` when
+ * both parts are empty, so blank records never match each other.
+ *
+ * Shared by classification and the UI so the key can only ever mean one thing.
+ * Its semantics are ADR-0001 territory — do not change what it matches.
+ */
+export function titleKey(record) {
+  const key =
+    normalizeStr(record?.artist) + "\x00" + normalizeStr(record?.title);
+  return key === "\x00" ? null : key;
+}
+
+/**
  * Strips Discogs' artist disambiguation suffix, e.g. "The Beatles (2)" → "The Beatles".
  */
 function stripDiscogsArtistSuffix(name) {
@@ -65,11 +79,8 @@ function isPrimaryMatch(discogs, existing) {
  * claimed record must never be re-linked to a different release via this path.
  */
 function isFallbackMatch(discogs, existing) {
-  const dk =
-    normalizeStr(discogs.artist) + "\x00" + normalizeStr(discogs.title);
-  const ek =
-    normalizeStr(existing.artist) + "\x00" + normalizeStr(existing.title);
-  return dk === ek && dk !== "\x00";
+  const dk = titleKey(discogs);
+  return dk != null && dk === titleKey(existing);
 }
 
 /**
