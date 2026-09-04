@@ -264,7 +264,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   function toggleAllAmbiguous(checked) {
     setSelectedAmbiguous(
       checked
-        ? new Set(ambiguousRecords.map((r, i) => newRecordKey(r, i)))
+        ? new Set(ambiguousRecords.map((a, i) => newRecordKey(a.discogs, i)))
         : new Set(),
     );
   }
@@ -320,7 +320,8 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   function findPickerSourceRecord(key) {
     const [bucket, ...rest] = key.split(":");
     const rawKey = rest.join(":");
-    const list = bucket === "amb" ? ambiguousRecords : newRecords;
+    const list =
+      bucket === "amb" ? ambiguousRecords.map((a) => a.discogs) : newRecords;
     const idx = list.findIndex((r, i) => newRecordKey(r, i) === rawKey);
     return idx === -1 ? null : { bucket, idx, discogsRecord: list[idx] };
   }
@@ -390,11 +391,11 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   }
 
   // ── Delete unmatched ──────────────────────────────────────────────
-  function toggleEnableDeleteUnmatched(checked, unmatchedList) {
+  // Deletion is irreversible, so enabling the option selects nothing: the user
+  // opts in per record, or uses the select-all control once.
+  function toggleEnableDeleteUnmatched(checked) {
     setEnableDeleteUnmatched(checked);
-    setSelectedForDeletion(
-      checked ? new Set(unmatchedList.map((r) => r.id)) : new Set(),
-    );
+    setSelectedForDeletion(new Set());
   }
 
   function toggleDeletion(id) {
@@ -415,9 +416,9 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   function handleSync(unmatchedList) {
     const toImport = [
       ...newRecords.filter((r, i) => selectedNew.has(newRecordKey(r, i))),
-      ...ambiguousRecords.filter((r, i) =>
-        selectedAmbiguous.has(newRecordKey(r, i)),
-      ),
+      ...ambiguousRecords
+        .filter((a, i) => selectedAmbiguous.has(newRecordKey(a.discogs, i)))
+        .map((a) => a.discogs),
     ];
 
     const updates = matchedRecords
@@ -448,10 +449,17 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   // A record with a discogsId is only excluded if that ID is confirmed present
   // in the fetched collection — if it was removed from Discogs/the user's
   // collection it remains eligible for deletion.
+  // Candidates of an ambiguous release are excluded too: the sync is offering
+  // them for manual matching, so they are not "not on Discogs" — listing them
+  // here would let one click delete every pressing of the album.
   const matchedExistingIds = new Set(matchedRecords.map((m) => m.existing.id));
+  const ambiguousCandidateIds = new Set(
+    ambiguousRecords.flatMap((a) => a.candidateIds),
+  );
   const unmatchedExisting = existingRecords.filter(
     (e) =>
       !matchedExistingIds.has(e.id) &&
+      !ambiguousCandidateIds.has(e.id) &&
       (!e.discogsId || !fetchedDiscogsIds.has(e.discogsId)),
   );
 
@@ -829,7 +837,8 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                       </span>
                     </div>
                     <div className="discogs-record-list">
-                      {ambiguousRecords.map((record, i) => {
+                      {ambiguousRecords.map((entry, i) => {
+                        const record = entry.discogs;
                         const rawKey = newRecordKey(record, i);
                         const key = pickerKey("amb", record, i);
                         const checked = selectedAmbiguous.has(rawKey);
@@ -1041,10 +1050,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                     type="checkbox"
                     checked={enableDeleteUnmatched}
                     onChange={(e) =>
-                      toggleEnableDeleteUnmatched(
-                        e.target.checked,
-                        unmatchedExisting,
-                      )
+                      toggleEnableDeleteUnmatched(e.target.checked)
                     }
                   />
                   <span>Also delete records not found in Discogs</span>

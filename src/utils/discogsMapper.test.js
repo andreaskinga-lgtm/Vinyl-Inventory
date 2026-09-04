@@ -86,7 +86,70 @@ describe("findMatches", () => {
 
     expect(newRecords).toEqual([]);
     expect(matchedRecords).toEqual([]);
-    expect(ambiguousRecords).toEqual([incoming]);
+    expect(ambiguousRecords).toEqual([
+      { discogs: incoming, candidateIds: ["existing-a", "existing-b"] },
+    ]);
+  });
+
+  it("reports every unclaimed same-title local record in candidateIds", () => {
+    const existingA = localRecord({ id: "existing-a", discogsId: null });
+    const existingB = localRecord({ id: "existing-b", discogsId: null });
+    const existingC = localRecord({ id: "existing-c", discogsId: null });
+    const incoming = discogsRecord({ discogsId: 111 });
+
+    const { ambiguousRecords } = findMatches(
+      [incoming],
+      [existingA, existingB, existingC],
+    );
+
+    expect(ambiguousRecords).toHaveLength(1);
+    expect(ambiguousRecords[0].candidateIds).toEqual([
+      "existing-a",
+      "existing-b",
+      "existing-c",
+    ]);
+  });
+
+  it("excludes auto-matched and differently-claimed records from candidateIds", () => {
+    // autoMatched is the sole unclaimed candidate for release 111, so it is
+    // auto-matched; claimed belongs to a different release entirely. Neither
+    // may surface as a candidate for the ambiguous release 222.
+    const autoMatched = localRecord({ id: "auto-matched", discogsId: null });
+    const claimed = localRecord({
+      id: "claimed",
+      artist: "Portishead",
+      title: "Dummy",
+      discogsId: 999,
+    });
+    const ambA = localRecord({
+      id: "amb-a",
+      artist: "Portishead",
+      title: "Dummy",
+      discogsId: null,
+    });
+    const ambB = localRecord({
+      id: "amb-b",
+      artist: "Portishead",
+      title: "Dummy",
+      discogsId: null,
+    });
+
+    const incomingMatched = discogsRecord({ discogsId: 111 });
+    const incomingAmbiguous = discogsRecord({
+      artist: "Portishead",
+      title: "Dummy",
+      discogsId: 222,
+    });
+
+    const { matchedRecords, ambiguousRecords } = findMatches(
+      [incomingMatched, incomingAmbiguous],
+      [autoMatched, claimed, ambA, ambB],
+    );
+
+    expect(matchedRecords).toHaveLength(1);
+    expect(matchedRecords[0].existing).toBe(autoMatched);
+    expect(ambiguousRecords).toHaveLength(1);
+    expect(ambiguousRecords[0].candidateIds).toEqual(["amb-a", "amb-b"]);
   });
 
   it("does not let a claimed record whose own linked release has disappeared act as a fallback candidate for a different incoming release", () => {

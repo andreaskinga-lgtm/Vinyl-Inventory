@@ -117,7 +117,11 @@ export function computeFieldsToUpdate(discogs, existing) {
  *   enrichments.
  * - `ambiguousRecords`: more than one unclaimed existing record shares
  *   artist+title — cannot be auto-matched without guessing which physical
- *   copy it belongs to; requires manual resolution.
+ *   copy it belongs to; requires manual resolution. Each entry is
+ *   `{ discogs, candidateIds }`, where `candidateIds` are the ids of the
+ *   unclaimed local records that made it ambiguous. Callers need those ids:
+ *   the candidates are still awaiting manual resolution, so they must not be
+ *   treated as absent from Discogs (e.g. offered up for deletion).
  *
  * A record is "claimed" once its `discogsId` is set. Claimed records are
  * never reassigned to a different incoming release via the artist+title
@@ -126,7 +130,7 @@ export function computeFieldsToUpdate(discogs, existing) {
  *
  * @param {object[]} discogsRecords - Records processed through mapDiscogsRelease
  * @param {object[]} existingRecords - The current local collection
- * @returns {{ newRecords: object[], matchedRecords: object[], ambiguousRecords: object[] }}
+ * @returns {{ newRecords: object[], matchedRecords: object[], ambiguousRecords: { discogs: object, candidateIds: (string|number)[] }[] }}
  */
 export function findMatches(discogsRecords, existingRecords) {
   const newRecords = [];
@@ -158,7 +162,10 @@ export function findMatches(discogsRecords, existingRecords) {
         fieldsToUpdate: computeFieldsToUpdate(discogs, existing),
       });
     } else {
-      ambiguousRecords.push(discogs);
+      ambiguousRecords.push({
+        discogs,
+        candidateIds: fallbackCandidates.map((c) => c.id),
+      });
     }
   }
 
