@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by:
