@@ -1,0 +1,25 @@
+[Unit]
+Description=Vinyl Inventory
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=vinyl-inventory
+Group=vinyl-inventory
+WorkingDirectory=/opt/vinyl-inventory
+EnvironmentFile=/etc/vinyl-inventory.env
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vinyl-inventory
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/vinyl-inventory
+
+[Install]
+WantedBy=multi-user.target

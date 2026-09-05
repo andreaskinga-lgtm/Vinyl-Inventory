@@ -1,7 +1,7 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
-Blocked by: 16, 23
+Blocked by:
 
 # Add the no-Docker systemd fallback
 
@@ -37,3 +37,13 @@ Before editing, read **No-Docker systemd fallback** in
 - Port 80, reverse proxying, and TLS remain clearly operator-owned advanced options.
 - Host installation and reboot verification are deferred to
   **Verify the systemd fallback on Linux**.
+
+## Comments
+
+- Added the non-root systemd unit, protected environment-file example, and concise
+  install/update runbook under `deploy/systemd/`.
+- The update runbook creates a timestamped data archive before stopping the service and
+  fails fast if the backup cannot be created. It pins an explicit release tag and verifies
+  health, collection JSON, service activity, and journal output.
+- Standards and specification review found no remaining issues. Full tests, lint, and the
+  production build pass; native systemd verification remains with issue 36.
