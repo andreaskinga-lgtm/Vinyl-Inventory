@@ -22,13 +22,20 @@ function apiPlugin() {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
+      workbox: {
+        navigateFallback: "index.html",
+        navigateFallbackDenylist: [
+          /^\/api(?:\/|\?|$)/,
+          /^\/api\.php(?:\/|\?|$)/,
+        ],
+      },
       devOptions: {
-        enabled: true, // enables SW in dev mode
+        enabled: mode === "pwa-test",
       },
       includeAssets: [
         "vinyl-icon.svg",
@@ -69,4 +76,4 @@ export default defineConfig({
   server: {
     host: true, // listen on all network interfaces (0.0.0.0)
   },
-});
+}));

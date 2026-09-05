@@ -85,6 +85,9 @@ decisions; the build is a follow-on effort.
 - [PWA staleness policy and cache-header rules](issues/11-pwa-policy.md): guests choose a
   prompted reload after 15-minute update checks; entry and worker metadata revalidate while
   hashed assets stay immutable, and normal development leaves the service worker off.
+- [Implement prompted PWA updates](issues/24-pwa-update-flow.md): the production app now
+  prompts before activation, checks every 15 minutes, isolates service-worker testing behind
+  `npm run dev:pwa-test`, and denies API paths from the app-shell fallback.
 - [CI scope and the handler test boundary](issues/13-ci-and-tests.md): Node 22 CI runs lint and
   Vitest on PRs and `main`; direct handler and atomic-write regression tests gate versioned
   GHCR releases.

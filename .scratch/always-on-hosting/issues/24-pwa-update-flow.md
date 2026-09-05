@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by: 23
@@ -33,3 +33,12 @@ Before editing, read **Production web serving and PWA behavior** in
 - A production smoke test demonstrates the prompt by serving two successive builds.
 - API requests return API responses while the PWA is installed.
 - `npm run lint` and `npm run build` pass.
+
+## Answer
+
+Implemented prompted PWA updates with a 15-minute `registration.update()` check, a user-only
+**New version available - Reload** action, normal-development service-worker cleanup, and an
+explicit `npm run dev:pwa-test` mode. Workbox navigation fallback excludes `/api/*`, `/api.php`,
+and query-string variants; generated `dev-dist/` output is ignored and no longer tracked.
+Production cache behavior remains in the Express adapter, and the README now documents the
+same-origin two-build smoke test for the installed PWA and API boundary.

@@ -10,7 +10,11 @@ import {
   SUB_GENRES as DEFAULT_SUB_GENRES,
 } from "./data/genreOptions";
 import DiscogsImport from "./components/DiscogsImport";
+import UpdatePrompt from "./components/UpdatePrompt";
+import { useRegisterSW } from "virtual:pwa-register/react";
 import "./App.css";
+
+const UPDATE_CHECK_INTERVAL = 15 * 60 * 1000;
 
 function normalizeDiscogsConfig(data) {
   const validSources = new Set(["environment", "saved", "none"]);
@@ -57,6 +61,35 @@ function App() {
   const initialized = useRef(false);
   const optionsInitialized = useRef(false);
   const bgRef = useRef(null);
+  const registrationRef = useRef(null);
+  const {
+    needRefresh: [isUpdateAvailable],
+    updateServiceWorker,
+  } = useRegisterSW({
+    immediate: true,
+    onRegisteredSW: (_swUrl, registration) => {
+      registrationRef.current = registration ?? null;
+    },
+  });
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const registration = registrationRef.current;
+      if (!registration) return;
+
+      registration.update().catch((error) => {
+        console.error("Unable to check for a PWA update:", error);
+      });
+    }, UPDATE_CHECK_INTERVAL);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  function handleReload() {
+    updateServiceWorker(true).catch((error) => {
+      console.error("Unable to activate the available PWA update:", error);
+    });
+  }
 
   const loadDiscogsConfig = useCallback(async () => {
     setDiscogsConfig(await requestDiscogsConfig());
@@ -264,9 +297,17 @@ function App() {
     );
   });
 
+  const updatePrompt = (
+    <UpdatePrompt
+      isUpdateAvailable={isUpdateAvailable}
+      onReload={handleReload}
+    />
+  );
+
   if (loading) {
     return (
       <>
+        {updatePrompt}
         <div
           className="parallax-bg"
           ref={bgRef}
@@ -283,6 +324,7 @@ function App() {
 
   return (
     <>
+      {updatePrompt}
       <div
         className="parallax-bg"
         ref={bgRef}

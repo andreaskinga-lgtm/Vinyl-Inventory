@@ -38,11 +38,15 @@ npm install
 npm run dev
 ```
 
+Normal development does not register a service worker. Use `npm run dev:pwa-test` only when
+testing service-worker behavior locally.
+
 ## Scripts
 
 | Command           | Description                    |
 | ----------------- | ------------------------------ |
 | `npm run dev`     | Dev server with API middleware |
+| `npm run dev:pwa-test` | Dev server with service-worker test mode |
 | `npm run build`   | Build the production SPA       |
 | `npm start`       | Serve the built app and API    |
 | `npm run preview` | Preview the production build   |
@@ -67,6 +71,22 @@ State changes auto-save via POST requests. A `useRef` guard prevents saving duri
 
 Run `npm run build` before `npm start`. The server initializes `DATA_DIR` with the collection
 and genre files on first startup, serves `/health`, and serves the built SPA with its API.
+
+## PWA update smoke test
+
+To verify a production update on one browser origin, serve build A with `npm run build &&
+PORT=8080 npm start`, open the site in Chrome, and install or launch the PWA. Stop that server,
+build and serve build B from the next app revision on the same port, then return to the still-open
+PWA. Within the update check window, it must show **New version available - Reload** without
+reloading first. Select the action once and confirm the new shell loads after one reload.
+
+While the PWA remains installed, open its DevTools console and run
+`await fetch("/api/records?smoke=1").then(async (response) => ({ status: response.status,
+contentType: response.headers.get("content-type"), body: await response.text() }))`. It must return
+status `200`, an `application/json` content type, and a JSON body rather than the app shell. The
+same request from `curl http://127.0.0.1:8080/api/records` is also useful for checking the server
+directly. This smoke test must reuse the same browser profile and origin for both builds; clearing
+site data would remove the waiting-worker scenario.
 
 ## Project Structure
 
