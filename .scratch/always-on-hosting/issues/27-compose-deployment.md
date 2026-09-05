@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by: 26
@@ -42,3 +42,12 @@ Before editing, read **Container and Compose deployment** in
   serves the app on the configured host port.
 - Recreating the container preserves the named-volume collection.
 - The override moves only the host port and leaves container port 8080 unchanged.
+
+## Comments
+
+- Added the pinned one-service deployment in `compose.yaml`, the required-image candidate
+  override, and the host-port override example.
+- Verified Compose resolution with and without Discogs variables, built and ran the local
+  candidate image, confirmed the Node healthcheck and non-root runtime, and preserved a record
+  across forced container recreation.
+- Standards and specification reviews found no issues.
