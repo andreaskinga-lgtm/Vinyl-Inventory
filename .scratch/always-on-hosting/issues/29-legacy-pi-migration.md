@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-sol
 Blocked by: 20, 27
@@ -40,3 +40,8 @@ destructive migration across agents would weaken its fail-closed boundary.
   health/count/Pressing/credential-source checks and rollback steps.
 - Pre-release commands use `compose.yaml` plus `deploy/compose/compose.candidate.yaml` with an
   explicit `VINYL_IMAGE`; they never try to pull the not-yet-published `v1.0.0` pin.
+
+## Comments
+
+Implemented the fail-closed migration utility, focused temporary-directory coverage, and Compose
+runbook fragment. The final Standards and Spec review axes reported no findings.
