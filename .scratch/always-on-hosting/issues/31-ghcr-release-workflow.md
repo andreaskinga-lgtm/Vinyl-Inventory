@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-terra
 Blocked by: 26, 30
@@ -36,3 +36,11 @@ permissions in one Terra ticket because they form one release-integrity boundary
 - Workflow logs and metadata contain no repository or personal credential.
 - The ticket records the exact candidate SHA tag for Pi acceptance.
 
+## Comments
+
+- Implemented `.github/workflows/release.yml`. It invokes the reusable CI workflow before
+  publication, validates stable release tags against `package.json`, and publishes the required
+  amd64/arm64 GHCR manifest aliases through Docker metadata.
+- Pi acceptance candidate: `sha-bb1fb8c`. This is the immutable short-SHA tag emitted for the
+  release-workflow commit after its `main` push succeeds.
+- Standards and specification review found no actionable issues.
