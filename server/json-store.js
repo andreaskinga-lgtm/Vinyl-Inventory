@@ -80,7 +80,12 @@ function serializeJson(value) {
   return `${serialized}\n`;
 }
 
-export async function atomicWriteJson({ filePath, value, hooks = {} }) {
+export async function atomicWriteJson({
+  filePath,
+  value,
+  serializedValue,
+  hooks = {},
+}) {
   const directory = path.dirname(filePath);
   const baseName = path.basename(filePath);
   const operationId = `${process.pid}-${randomUUID()}`;
@@ -93,7 +98,11 @@ export async function atomicWriteJson({ filePath, value, hooks = {} }) {
     `.${baseName}.${operationId}.bak.tmp`,
   );
   const backupPath = backupPathFor(filePath);
-  const serialized = serializeJson(value);
+  const serialized =
+    serializedValue === undefined ? serializeJson(value) : serializedValue;
+  if (serializedValue !== undefined) {
+    parseJson(serializedValue, filePath);
+  }
 
   await mkdir(directory, { recursive: true });
 
@@ -199,13 +208,17 @@ export function createJsonStore({
     return parseJson(contents, filePath);
   }
 
-  function writeResource(resource, value) {
+  function writeResource(resource, value, { serializedValue } = {}) {
     const priorWrite = writeQueues.get(resource) ?? Promise.resolve();
     const currentWrite = priorWrite
       .catch(() => {})
       .then(async () => {
         await initialize();
-        await writeJson({ filePath: resourcePath(resource), value });
+        await writeJson({
+          filePath: resourcePath(resource),
+          value,
+          serializedValue,
+        });
       });
     writeQueues.set(resource, currentWrite);
 
@@ -246,7 +259,7 @@ export function createJsonStore({
       writeResource("genreOptions", genreOptions),
     readDiscogsConfig: () =>
       readResource("discogsConfig", { optional: true }),
-    writeDiscogsConfig: (discogsConfig) =>
-      writeResource("discogsConfig", discogsConfig),
+    writeDiscogsConfig: (discogsConfig, options) =>
+      writeResource("discogsConfig", discogsConfig, options),
   });
 }

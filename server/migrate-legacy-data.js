@@ -68,7 +68,9 @@ async function preflightSource(sourceDir) {
     }
     resources.set(resource, {
       fileName,
+      contents,
       value: contents === null ? null : parseJson(contents, filePath),
+      backupContents,
       backupValue:
         backupContents === null ? null : parseJson(backupContents, backupPath),
     });
@@ -161,9 +163,15 @@ async function resolveNodeOwner() {
   return { uid: Number(fields[2]), gid: Number(fields[3]) };
 }
 
-async function installBackup({ targetDir, fileName, value, owner }) {
+async function installBackup({
+  targetDir,
+  fileName,
+  value,
+  serializedValue,
+  owner,
+}) {
   const backupPath = resolveWithinTarget(targetDir, `${fileName}.bak`);
-  await atomicWriteJson({ filePath: backupPath, value });
+  await atomicWriteJson({ filePath: backupPath, value, serializedValue });
   await chown(backupPath, owner.uid, owner.gid);
   await chmod(backupPath, 0o640);
 }
@@ -237,13 +245,21 @@ export async function migrateLegacyData({
     if (source.value !== null) {
       await hooks.beforeResourceWrite?.(resource);
       if (overwrite) {
-        await store[`write${resource[0].toUpperCase()}${resource.slice(1)}`](
-          source.value,
-        );
+        if (resource === "discogsConfig") {
+          await store.writeDiscogsConfig(source.value, {
+            serializedValue: source.contents,
+          });
+        } else {
+          await store[
+            `write${resource[0].toUpperCase()}${resource.slice(1)}`
+          ](source.value);
+        }
       } else {
         await atomicWriteJson({
           filePath: resolveWithinTarget(resolvedTarget, fileName),
           value: source.value,
+          serializedValue:
+            resource === "discogsConfig" ? source.contents : undefined,
         });
       }
     }
@@ -257,6 +273,8 @@ export async function migrateLegacyData({
         targetDir: resolvedTarget,
         fileName,
         value: source.backupValue,
+        serializedValue:
+          resource === "discogsConfig" ? source.backupContents : undefined,
         owner: targetOwner,
       });
     }

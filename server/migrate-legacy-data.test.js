@@ -98,6 +98,30 @@ describe("legacy migration preflight", () => {
     expect(log.mock.calls.flat().join(" ")).not.toContain("private-user");
     expect(log.mock.calls.flat().join(" ")).not.toContain("private-token");
   });
+
+  it("preserves validated credential files verbatim", async () => {
+    const sourceDir = await createSource();
+    const targetDir = await createTemporaryDirectory();
+    const credentialContents = '{"username":"private-user","token":"private-token"}';
+    const backupContents = '{\n\t"username": "older",\n\t"token": "older-token"\n}';
+    await writeFile(
+      path.join(sourceDir, "discogsConfig.json"),
+      credentialContents,
+    );
+    await writeFile(
+      path.join(sourceDir, "discogsConfig.json.bak"),
+      backupContents,
+    );
+
+    await migrateLegacyData({ sourceDir, targetDir, owner, log: vi.fn() });
+
+    await expect(
+      readFile(path.join(targetDir, "discogsConfig.json"), "utf8"),
+    ).resolves.toBe(credentialContents);
+    await expect(
+      readFile(path.join(targetDir, "discogsConfig.json.bak"), "utf8"),
+    ).resolves.toBe(backupContents);
+  });
 });
 
 describe("legacy migration transfer", () => {

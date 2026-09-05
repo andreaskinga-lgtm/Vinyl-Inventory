@@ -156,6 +156,20 @@ describe("createJsonStore resources", () => {
 });
 
 describe("atomicWriteJson", () => {
+  it("atomically writes already-validated serialized JSON verbatim", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const filePath = path.join(dataDir, "discogsConfig.json");
+    const serializedValue = '{"username":"collector","token":"secret"}';
+
+    await atomicWriteJson({
+      filePath,
+      value: { username: "collector", token: "secret" },
+      serializedValue,
+    });
+
+    await expect(readFile(filePath, "utf8")).resolves.toBe(serializedValue);
+  });
+
   it("retains the previous primary as the single backup", async () => {
     const dataDir = await createTemporaryDirectory();
     const filePath = path.join(dataDir, "records.json");
