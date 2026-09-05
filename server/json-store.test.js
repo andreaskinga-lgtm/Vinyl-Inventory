@@ -87,6 +87,16 @@ describe("createJsonStore initialization", () => {
 });
 
 describe("createJsonStore resources", () => {
+  it("verifies that the initialized data directory is writable", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const store = createJsonStore({ dataDir });
+
+    await expect(store.verifyWritable()).resolves.toBeUndefined();
+    await expect(readdir(dataDir)).resolves.toEqual(
+      ["genreOptions.json", "records.json"].sort(),
+    );
+  });
+
   it("reads and writes each resource without exposing paths to callers", async () => {
     const dataDir = await createTemporaryDirectory();
     const store = createJsonStore({ dataDir });

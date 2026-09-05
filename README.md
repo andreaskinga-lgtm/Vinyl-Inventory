@@ -43,13 +43,15 @@ npm run dev
 | Command           | Description                    |
 | ----------------- | ------------------------------ |
 | `npm run dev`     | Dev server with API middleware |
-| `npm run build`   | Production build (static SPA)  |
+| `npm run build`   | Build the production SPA       |
+| `npm start`       | Serve the built app and API    |
 | `npm run preview` | Preview the production build   |
 | `npm run lint`    | Run ESLint                     |
 
 ## Data & API
 
-During development, Vite middleware plugins serve a lightweight local API:
+During development, Vite middleware serves the shared API handler. The production server
+mounted by `npm start` uses the same handler:
 
 | Endpoint                       | Backing File                | Purpose                                  |
 | ------------------------------ | --------------------------- | ---------------------------------------- |
@@ -63,7 +65,8 @@ During development, Vite middleware plugins serve a lightweight local API:
 
 State changes auto-save via POST requests. A `useRef` guard prevents saving during the initial data load.
 
-**Production builds are fully static** — there is no production backend. The JSON files and API middleware are a dev-time convenience only.
+Run `npm run build` before `npm start`. The server initializes `DATA_DIR` with the collection
+and genre files on first startup, serves `/health`, and serves the built SPA with its API.
 
 ## Project Structure
 

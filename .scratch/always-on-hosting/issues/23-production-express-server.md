@@ -1,7 +1,7 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
-Blocked by: 16, 17, 22
+Blocked by:
 
 # Add the production Express server
 

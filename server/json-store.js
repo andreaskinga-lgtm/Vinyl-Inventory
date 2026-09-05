@@ -218,8 +218,27 @@ export function createJsonStore({
     return currentWrite;
   }
 
+  async function verifyWritable() {
+    await initialize();
+    const verificationPath = path.join(
+      dataDir,
+      `.${process.pid}-${randomUUID()}.write-test`,
+    );
+
+    try {
+      await writeAndSync(verificationPath, "");
+    } catch (error) {
+      throw new Error(`Data directory is not writable: ${dataDir}`, {
+        cause: error,
+      });
+    } finally {
+      await removeTemporaryFile(verificationPath);
+    }
+  }
+
   return Object.freeze({
     initialize,
+    verifyWritable,
     readRecords: () => readResource("records"),
     writeRecords: (records) => writeResource("records", records),
     readGenreOptions: () => readResource("genreOptions"),
