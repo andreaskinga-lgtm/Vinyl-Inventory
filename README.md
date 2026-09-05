@@ -72,6 +72,81 @@ State changes auto-save via POST requests. A `useRef` guard prevents saving duri
 Run `npm run build` before `npm start`. The server initializes `DATA_DIR` with the collection
 and genre files on first startup, serves `/health`, and serves the built SPA with its API.
 
+## Migrating legacy Pi data to Compose
+
+Stop every process that can write the legacy `data/` directory, then set these values. Use the
+candidate override until the first release image is published; do not pull the `v1.0.0` pin.
+`LEGACY_START_COMMAND` must be the command that restarts the old service if rollback is needed.
+
+```sh
+export LEGACY_DATA_DIR=/absolute/path/to/Vinyl-Inventory/data
+export VINYL_IMAGE=vinyl-inventory:local
+export LEGACY_START_COMMAND='sudo systemctl start your-legacy-vinyl-service'
+test -d "$LEGACY_DATA_DIR"
+
+sudo systemctl stop your-legacy-vinyl-service
+tar -C "$(dirname "$LEGACY_DATA_DIR")" \
+  -czf "$HOME/vinyl-legacy-$(date +%Y%m%d-%H%M%S).tar.gz" \
+  "$(basename "$LEGACY_DATA_DIR")"
+
+docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml \
+  run --rm --user root --no-deps \
+  --mount "type=bind,src=$LEGACY_DATA_DIR,dst=/legacy,readonly" \
+  app node server/migrate-legacy-data.js --source /legacy --target /data
+```
+
+The migration parses both required files and syntax-checks saved Discogs credentials before it
+changes the volume. It transfers only recognized JSON files and matching backups, leaves the
+legacy directory untouched, and refuses a used target. After separately backing up a used target,
+an intentional replacement may append `--overwrite`; this preserves each pre-migration primary
+as its `.bak` instead of replacing that recovery copy with a legacy backup.
+
+Start and verify the candidate with operator-known values. The two pressing IDs must identify
+separate owned copies of the same artist and title. The credential source is `environment`,
+`saved`, or `none`.
+
+```sh
+export EXPECTED_RECORD_COUNT=123
+export PRESSING_ONE_ID='replace-with-first-record-id'
+export PRESSING_TWO_ID='replace-with-second-record-id'
+export EXPECTED_DISCOGS_SOURCE=saved
+
+docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml up -d
+curl --fail --silent --show-error http://127.0.0.1/health
+curl --fail --silent --show-error http://127.0.0.1/api/records | node -e '
+let input = "";
+process.stdin.on("data", chunk => input += chunk).on("end", () => {
+  const records = JSON.parse(input);
+  const first = records.find(record => String(record.id) === process.env.PRESSING_ONE_ID);
+  const second = records.find(record => String(record.id) === process.env.PRESSING_TWO_ID);
+  if (records.length !== Number(process.env.EXPECTED_RECORD_COUNT)) process.exit(1);
+  if (!first || !second || first.id === second.id) process.exit(1);
+  if (first.artist !== second.artist || first.title !== second.title) process.exit(1);
+  console.log(`Verified ${records.length} records and two independent pressings.`);
+});'
+curl --fail --silent --show-error http://127.0.0.1/api/discogs-config | node -e '
+let input = "";
+process.stdin.on("data", chunk => input += chunk).on("end", () => {
+  const config = JSON.parse(input);
+  if (config.source !== process.env.EXPECTED_DISCOGS_SOURCE) process.exit(1);
+  console.log(`Verified Discogs credential source: ${config.source}`);
+});'
+docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml exec \
+  app node -e "Promise.all(['records.json','genreOptions.json'].map(async name => {
+    await import('node:fs/promises').then(fs => fs.access('/data/' + name, fs.constants.R_OK));
+  })).catch(() => process.exit(1))"
+```
+
+If any check fails, retain the failed named volume for inspection and roll back without `-v`:
+
+```sh
+docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml down
+sh -c "$LEGACY_START_COMMAND"
+```
+
+Do not remove the legacy directory until its separate archive and the migrated collection have
+both been verified.
+
 ## PWA update smoke test
 
 To verify a production update on one browser origin, serve build A with `npm run build &&
