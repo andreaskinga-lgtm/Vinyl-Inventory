@@ -32,3 +32,20 @@ Before editing, read **Discogs credential contract** in
 - No component-test framework is added; verify with existing lint/build plus a documented manual
   smoke test for the three credential states.
 - `npm run lint` and `npm run build` pass.
+
+## Manual smoke test
+
+With `npm run dev` and a temporary `DATA_DIR`, open **Sync with Discogs** and verify:
+
+1. **Unconfigured:** with no environment pair and no complete saved pair, the modal says
+   credentials are not configured, shows editable username/token fields, and shows **Save
+   credentials**. Saving a complete pair changes the state to saved without exposing the token.
+2. **Saved:** with no environment pair and a complete `discogsConfig.json`, the modal identifies
+   saved credentials, shows **Save credentials** for replacement, and fetches the collection
+   through `/api/discogs/collection?page=1&per_page=100` without a credential query parameter.
+3. **Environment:** with `DISCOGS_USER` and `DISCOGS_TOKEN` set, the modal identifies
+   environment-managed credentials, shows the username as read-only, and does not render a
+   **Save credentials** action.
+
+Also confirm an unconfigured collection request shows the configuration-required error and a
+simulated `409` save response shows the environment-managed error in the existing error panel.

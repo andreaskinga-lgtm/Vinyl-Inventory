@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { mapDiscogsRelease } from "../utils/discogsMapper";
 import {
   beginSync,
@@ -31,30 +31,40 @@ function Thumb({ url, alt = "" }) {
   return <div className="discogs-thumb discogs-thumb--empty">🎵</div>;
 }
 
-function responseError(status, body, fallback) {
-  if (status === 401) {
+function responseError(body, fallback) {
+  if (body?.error === "Discogs credentials are required") {
     return "Discogs credentials are required. Save credentials before fetching.";
   }
-  if (status === 409) {
+  if (
+    body?.error ===
+    "Discogs credentials are managed by the environment"
+  ) {
     return "Discogs credentials are managed by the environment and cannot be changed.";
   }
   return body?.error || fallback;
 }
 
-function DiscogsImport({ existingRecords, onImport, onClose }) {
+function DiscogsImport({
+  existingRecords,
+  onImport,
+  onClose,
+  discogsConfig,
+  discogsConfigLoading,
+  discogsConfigError,
+  onSaveDiscogsConfig,
+}) {
   // ── Phase "connect" state ──────────────────────────────────────────────
   const [phase, setPhase] = useState("connect");
-  const [username, setUsername] = useState("");
-  const [hasToken, setHasToken] = useState(false);
-  const [source, setSource] = useState("none");
-  const [canEdit, setCanEdit] = useState(false);
-  const [configLoading, setConfigLoading] = useState(true);
-  const [configReady, setConfigReady] = useState(false);
   const [savingCredentials, setSavingCredentials] = useState(false);
   const [credentialsFormKey, setCredentialsFormKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null); // { page, totalPages }
+  const username = discogsConfig?.username ?? "";
+  const hasToken = discogsConfig?.hasToken ?? false;
+  const source = discogsConfig?.source ?? "none";
+  const canEdit = discogsConfig?.canEdit ?? false;
+  const configReady = discogsConfig !== null;
 
   // ── Phase "review" state ───────────────────────────────────────────────
   // The whole review — what this sync will do to the collection — lives in a
@@ -73,53 +83,6 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   const [manualMatchSearch, setManualMatchSearch] = useState("");
   const [pickerAnchorY, setPickerAnchorY] = useState(null);
   const modalRef = useRef(null);
-
-  const applyDiscogsConfig = useCallback((data) => {
-    const validSources = new Set(["environment", "saved", "none"]);
-    if (
-      !data ||
-      typeof data.username !== "string" ||
-      typeof data.hasToken !== "boolean" ||
-      !validSources.has(data.source) ||
-      typeof data.canEdit !== "boolean"
-    ) {
-      throw new Error("Invalid Discogs credential response.");
-    }
-
-    setUsername(data.username);
-    setHasToken(data.hasToken);
-    setSource(data.source);
-    setCanEdit(data.canEdit);
-    setCredentialsFormKey((key) => key + 1);
-  }, []);
-
-  const loadDiscogsConfig = useCallback(async () => {
-    const response = await fetch("/api/discogs-config");
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(
-        responseError(
-          response.status,
-          body,
-          `Unable to load Discogs credentials (HTTP ${response.status}).`,
-        ),
-      );
-    }
-    applyDiscogsConfig(body);
-  }, [applyDiscogsConfig]);
-
-  useEffect(() => {
-    loadDiscogsConfig()
-      .then(() => setConfigReady(true))
-      .catch((loadError) => {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Unable to load Discogs credentials.",
-        );
-      })
-      .finally(() => setConfigLoading(false));
-  }, [loadDiscogsConfig]);
 
   // ── Helpers ─────────────────────────────────────────────────────────
   function fetchPage(page, per_page) {
@@ -144,26 +107,11 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
     setSavingCredentials(true);
     setError(null);
     try {
-      const response = await fetch("/api/discogs-config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: nextUsername,
-          token: nextToken,
-        }),
+      await onSaveDiscogsConfig({
+        username: nextUsername,
+        token: nextToken,
       });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(
-          responseError(
-            response.status,
-            body,
-            `Unable to save Discogs credentials (HTTP ${response.status}).`,
-          ),
-        );
-      }
-
-      await loadDiscogsConfig();
+      setCredentialsFormKey((key) => key + 1);
     } catch (saveError) {
       setError(
         saveError instanceof Error
@@ -194,7 +142,6 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
         const body = await firstResp.json().catch(() => ({}));
         throw new Error(
           responseError(
-            firstResp.status,
             body,
             `HTTP ${firstResp.status}`,
           ),
@@ -211,7 +158,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
         if (!resp.ok) {
           const body = await resp.json().catch(() => ({}));
           throw new Error(
-            responseError(resp.status, body, `HTTP ${resp.status} on page ${page}`),
+            responseError(body, `HTTP ${resp.status} on page ${page}`),
           );
         }
         const data = await resp.json();
@@ -313,11 +260,11 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
         {/* ── Phase A: Connect & Fetch ── */}
         {phase === "connect" && (
           <div className="discogs-connect-form">
-            {configLoading && (
+            {discogsConfigLoading && (
               <p className="discogs-progress">Loading Discogs credentials…</p>
             )}
 
-            {!configLoading && configReady && source === "environment" && (
+            {!discogsConfigLoading && configReady && source === "environment" && (
               <div className="discogs-credential-state discogs-credential-state--environment">
                 <strong>Environment-managed credentials configured</strong>
                 <span>
@@ -330,7 +277,7 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
               </div>
             )}
 
-            {!configLoading && configReady && source === "saved" && (
+            {!discogsConfigLoading && configReady && source === "saved" && (
               <div className="discogs-credential-state discogs-credential-state--saved">
                 <strong>Saved credentials configured</strong>
                 <span>
@@ -340,14 +287,14 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
               </div>
             )}
 
-            {!configLoading && configReady && source === "none" && (
+            {!discogsConfigLoading && configReady && source === "none" && (
               <div className="discogs-credential-state discogs-credential-state--none">
                 <strong>Discogs credentials are not configured</strong>
                 <span>Save a username and personal access token to connect.</span>
               </div>
             )}
 
-            {!configLoading &&
+            {!discogsConfigLoading &&
               configReady &&
               canEdit &&
               source !== "environment" && (
@@ -415,7 +362,9 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
                 </form>
               )}
 
-            {error && <p className="discogs-error">{error}</p>}
+            {(error || discogsConfigError) && (
+              <p className="discogs-error">{error || discogsConfigError}</p>
+            )}
             {loading && (
               <p className="discogs-progress">
                 {progress

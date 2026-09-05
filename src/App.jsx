@@ -12,6 +12,32 @@ import {
 import DiscogsImport from "./components/DiscogsImport";
 import "./App.css";
 
+function normalizeDiscogsConfig(data) {
+  const validSources = new Set(["environment", "saved", "none"]);
+  if (
+    !data ||
+    typeof data.username !== "string" ||
+    typeof data.hasToken !== "boolean" ||
+    !validSources.has(data.source) ||
+    typeof data.canEdit !== "boolean"
+  ) {
+    throw new Error("Invalid Discogs credential response.");
+  }
+  return data;
+}
+
+async function requestDiscogsConfig() {
+  const response = await fetch("/api/discogs-config");
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      body?.error ||
+        `Unable to load Discogs credentials (HTTP ${response.status}).`,
+    );
+  }
+  return normalizeDiscogsConfig(body);
+}
+
 function App() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,9 +51,48 @@ function App() {
   const [subGenres, setSubGenres] = useState(DEFAULT_SUB_GENRES);
   const [randomMode, setRandomMode] = useState(false);
   const [showDiscogsImport, setShowDiscogsImport] = useState(false);
+  const [discogsConfig, setDiscogsConfig] = useState(null);
+  const [discogsConfigLoading, setDiscogsConfigLoading] = useState(true);
+  const [discogsConfigError, setDiscogsConfigError] = useState(null);
   const initialized = useRef(false);
   const optionsInitialized = useRef(false);
   const bgRef = useRef(null);
+
+  const loadDiscogsConfig = useCallback(async () => {
+    setDiscogsConfig(await requestDiscogsConfig());
+  }, []);
+
+  useEffect(() => {
+    requestDiscogsConfig()
+      .then((config) => setDiscogsConfig(config))
+      .catch((error) => {
+        setDiscogsConfigError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load Discogs credentials.",
+        );
+      })
+      .finally(() => setDiscogsConfigLoading(false));
+  }, []);
+
+  const handleSaveDiscogsConfig = useCallback(
+    async ({ username, token }) => {
+      const response = await fetch("/api/discogs-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, token }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          body?.error ||
+            `Unable to save Discogs credentials (HTTP ${response.status}).`,
+        );
+      }
+      await loadDiscogsConfig();
+    },
+    [loadDiscogsConfig],
+  );
 
   // Load genre options from server on mount
   useEffect(() => {
@@ -333,6 +398,10 @@ function App() {
           existingRecords={records}
           onImport={handleDiscogsImport}
           onClose={() => setShowDiscogsImport(false)}
+          discogsConfig={discogsConfig}
+          discogsConfigLoading={discogsConfigLoading}
+          discogsConfigError={discogsConfigError}
+          onSaveDiscogsConfig={handleSaveDiscogsConfig}
         />
       )}
       {showPasswordPrompt && (
