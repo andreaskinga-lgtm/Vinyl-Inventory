@@ -6,14 +6,12 @@ import {
   readFile,
   readdir,
   realpath,
-  rename,
   unlink,
-  writeFile,
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { GENRES, SUB_GENRES } from "../src/data/genreOptions.js";
-import { createJsonStore } from "./json-store.js";
+import { atomicWriteJson, createJsonStore } from "./json-store.js";
 
 const RESOURCES = Object.freeze([
   ["records", "records.json", true],
@@ -63,15 +61,14 @@ async function preflightSource(sourceDir) {
   for (const [resource, fileName, required] of RESOURCES) {
     const filePath = path.join(resolvedSource, fileName);
     const contents = await readRegularFile(filePath, { required });
-    if (contents === null) {
-      continue;
-    }
-
     const backupPath = `${filePath}.bak`;
     const backupContents = await readRegularFile(backupPath);
+    if (contents === null && backupContents === null) {
+      continue;
+    }
     resources.set(resource, {
       fileName,
-      value: parseJson(contents, filePath),
+      value: contents === null ? null : parseJson(contents, filePath),
       backupValue:
         backupContents === null ? null : parseJson(backupContents, backupPath),
     });
@@ -166,20 +163,9 @@ async function resolveNodeOwner() {
 
 async function installBackup({ targetDir, fileName, value, owner }) {
   const backupPath = resolveWithinTarget(targetDir, `${fileName}.bak`);
-  const temporaryPath = resolveWithinTarget(
-    targetDir,
-    `.${fileName}.${process.pid}.migration-backup.tmp`,
-  );
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
-    flag: "wx",
-    mode: 0o640,
-  });
-  try {
-    await chown(temporaryPath, owner.uid, owner.gid);
-    await rename(temporaryPath, backupPath);
-  } finally {
-    await removeFileIfPresent(temporaryPath);
-  }
+  await atomicWriteJson({ filePath: backupPath, value });
+  await chown(backupPath, owner.uid, owner.gid);
+  await chmod(backupPath, 0o640);
 }
 
 async function secureTransferredFiles(targetDir, owner) {
@@ -235,17 +221,38 @@ export async function migrateLegacyData({
     );
   }
 
+  if (!overwrite) {
+    for (const [, fileName, required] of RESOURCES) {
+      if (required) {
+        await removeFileIfPresent(resolveWithinTarget(resolvedTarget, fileName));
+      }
+    }
+  }
+
   for (const [resource, fileName] of RESOURCES) {
     const source = resources.get(resource);
     if (!source) {
       continue;
     }
-    await hooks.beforeResourceWrite?.(resource);
-    await store[`write${resource[0].toUpperCase()}${resource.slice(1)}`](
-      source.value,
-    );
+    if (source.value !== null) {
+      await hooks.beforeResourceWrite?.(resource);
+      if (overwrite) {
+        await store[`write${resource[0].toUpperCase()}${resource.slice(1)}`](
+          source.value,
+        );
+      } else {
+        await atomicWriteJson({
+          filePath: resolveWithinTarget(resolvedTarget, fileName),
+          value: source.value,
+        });
+      }
+    }
 
-    if (!overwrite && source.backupValue !== null) {
+    const backupPath = resolveWithinTarget(resolvedTarget, `${fileName}.bak`);
+    if (
+      source.backupValue !== null &&
+      (!overwrite || !(await pathExists(backupPath)))
+    ) {
       await installBackup({
         targetDir: resolvedTarget,
         fileName,

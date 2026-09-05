@@ -82,12 +82,18 @@ candidate override until the first release image is published; do not pull the `
 export LEGACY_DATA_DIR=/absolute/path/to/Vinyl-Inventory/data
 export VINYL_IMAGE=vinyl-inventory:local
 export LEGACY_START_COMMAND='sudo systemctl start your-legacy-vinyl-service'
+export LEGACY_ARCHIVE="$HOME/vinyl-legacy-$(date +%Y%m%d-%H%M%S).tar.gz"
 test -d "$LEGACY_DATA_DIR"
 
 sudo systemctl stop your-legacy-vinyl-service
 tar -C "$(dirname "$LEGACY_DATA_DIR")" \
-  -czf "$HOME/vinyl-legacy-$(date +%Y%m%d-%H%M%S).tar.gz" \
+  -czf "$LEGACY_ARCHIVE" \
   "$(basename "$LEGACY_DATA_DIR")"
+tar -tzf "$LEGACY_ARCHIVE" >/dev/null
+tar -tzf "$LEGACY_ARCHIVE" |
+  grep -Fqx "$(basename "$LEGACY_DATA_DIR")/records.json"
+tar -tzf "$LEGACY_ARCHIVE" |
+  grep -Fqx "$(basename "$LEGACY_DATA_DIR")/genreOptions.json"
 
 docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml \
   run --rm --user root --no-deps \

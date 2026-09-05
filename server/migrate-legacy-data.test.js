@@ -127,7 +127,6 @@ describe("legacy migration transfer", () => {
       "discogsConfig.json",
       "discogsConfig.json.bak",
       "genreOptions.json",
-      "genreOptions.json.bak",
       "records.json",
       "records.json.bak",
     ]);
@@ -143,6 +142,27 @@ describe("legacy migration transfer", () => {
     expect(
       (await lstat(path.join(targetDir, "records.json"))).isSymbolicLink(),
     ).toBe(false);
+  });
+
+  it("transfers a recognized optional backup without its primary", async () => {
+    const sourceDir = await createSource();
+    const targetDir = await createTemporaryDirectory();
+    await writeJson(path.join(sourceDir, "discogsConfig.json.bak"), {
+      username: "former-collector",
+      token: "former-secret",
+    });
+
+    await migrateLegacyData({ sourceDir, targetDir, owner, log: vi.fn() });
+
+    await expect(
+      access(path.join(targetDir, "discogsConfig.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(
+      readJson(path.join(targetDir, "discogsConfig.json.bak")),
+    ).resolves.toEqual({
+      username: "former-collector",
+      token: "former-secret",
+    });
   });
 
   it("rejects target paths that escape the resolved target directory", () => {
