@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by: 18
@@ -31,4 +31,3 @@ source of truth. Read **Runtime architecture** in
 - No test reaches the network.
 - The existing Vite development path remains operational until the adapter ticket removes it.
 - Targeted tests and `npm run lint` pass.
-
