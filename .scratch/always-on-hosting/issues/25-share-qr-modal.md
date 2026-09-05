@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: ready-for-human
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by:
@@ -33,3 +33,8 @@ Before editing, read **Production web serving and PWA behavior** in
 - No route, canonical URL setting, or guest-specific view is added.
 - `npm run lint` and `npm run build` pass.
 - Physical-phone scanning is deferred to **Run Raspberry Pi 3 release acceptance**.
+
+## Comments
+
+- Implemented in commit `967471e` with a header-level **Share collection** action, an SVG QR modal using the runtime origin, selectable address text, responsive styling, and keyboard focus management.
+- Reviewed against `origin/discogs-improvements`: Standards found no issues and Spec found no issues.
