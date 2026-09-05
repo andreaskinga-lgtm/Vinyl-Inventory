@@ -17,17 +17,12 @@ Components ──callbacks──▶ App handlers ──setState──▶ re-rend
 
 State changes to `records` auto-save via `POST /api/records`. A `useRef` guard (`initialized.current`) prevents saving during the initial load.
 
-### API Layer (Dev Only)
+### API Layer
 
-Three custom Vite plugins in `vite.config.js` serve REST endpoints during development:
-
-| Plugin                  | Endpoints                     | Backing File              |
-| ----------------------- | ----------------------------- | ------------------------- |
-| `recordsApiPlugin`      | `GET/POST /api/records`       | `data/records.json`       |
-| `genreOptionsApiPlugin` | `GET/POST /api/genre-options` | `data/genreOptions.json`  |
-| `itunesApiPlugin`       | `GET/POST /api.php`           | Proxies iTunes Search API |
-
-**No production backend** — `vite build` produces a static SPA only. PWA support via `vite-plugin-pwa`.
+The shared Node middleware in `server/api-handler.js` owns all REST endpoint behavior for
+records, genres, iTunes, and Discogs. Development uses one `apiPlugin` in `vite.config.js` to
+mount that handler, while the production Express adapter mounts the same handler before static
+serving. `vite build` still produces the static SPA assets, with PWA support via `vite-plugin-pwa`.
 
 ## Build
 
