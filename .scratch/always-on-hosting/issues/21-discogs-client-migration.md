@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by: 20, 22
@@ -49,3 +49,10 @@ With `npm run dev` and a temporary `DATA_DIR`, open **Sync with Discogs** and ve
 
 Also confirm an unconfigured collection request shows the configuration-required error and a
 simulated `409` save response shows the environment-managed error in the existing error panel.
+
+## Comments
+
+- Implemented in commits `d87e181` and `b277054`.
+- Credential state is loaded and saved through `App.jsx`; `DiscogsImport` receives only the
+  redacted contract fields and callbacks.
+- Standards and spec re-reviews found no significant issues.
