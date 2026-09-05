@@ -11,6 +11,7 @@ import {
 } from "./data/genreOptions";
 import DiscogsImport from "./components/DiscogsImport";
 import UpdatePrompt from "./components/UpdatePrompt";
+import ShareCollectionModal from "./components/ShareCollectionModal";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import "./App.css";
 
@@ -55,6 +56,7 @@ function App() {
   const [subGenres, setSubGenres] = useState(DEFAULT_SUB_GENRES);
   const [randomMode, setRandomMode] = useState(false);
   const [showDiscogsImport, setShowDiscogsImport] = useState(false);
+  const [showShareCollection, setShowShareCollection] = useState(false);
   const [discogsConfig, setDiscogsConfig] = useState(null);
   const [discogsConfigLoading, setDiscogsConfigLoading] = useState(true);
   const [discogsConfigError, setDiscogsConfigError] = useState(null);
@@ -90,6 +92,11 @@ function App() {
       console.error("Unable to activate the available PWA update:", error);
     });
   }
+
+  const handleCloseShareCollection = useCallback(
+    () => setShowShareCollection(false),
+    [],
+  );
 
   const loadDiscogsConfig = useCallback(async () => {
     setDiscogsConfig(await requestDiscogsConfig());
@@ -333,6 +340,15 @@ function App() {
       <header className="app-header">
         <div className="app-header-top">
           <h1>Vinyl Collection</h1>
+          <button
+            type="button"
+            className="share-collection-btn"
+            onClick={() => setShowShareCollection(true)}
+            aria-haspopup="dialog"
+            aria-expanded={showShareCollection}
+          >
+            Share collection
+          </button>
         </div>
         {!randomMode && (
           <p className="collection-count">{filtered.length} records</p>
@@ -445,6 +461,9 @@ function App() {
           discogsConfigError={discogsConfigError}
           onSaveDiscogsConfig={handleSaveDiscogsConfig}
         />
+      )}
+      {showShareCollection && (
+        <ShareCollectionModal onClose={handleCloseShareCollection} />
       )}
       {showPasswordPrompt && (
         <div
