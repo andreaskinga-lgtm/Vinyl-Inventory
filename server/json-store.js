@@ -102,10 +102,21 @@ export async function atomicWriteJson({ filePath, value, hooks = {} }) {
 
     const priorContents = await readExistingFile(filePath);
     if (priorContents !== null) {
-      parseJson(priorContents, filePath);
-      await writeAndSync(backupTemporaryPath, priorContents);
-      await hooks.beforeBackupReplacement?.();
-      await rename(backupTemporaryPath, backupPath);
+      let priorIsValid = true;
+      try {
+        parseJson(priorContents, filePath);
+      } catch (error) {
+        if (!(error.cause instanceof SyntaxError)) {
+          throw error;
+        }
+        priorIsValid = false;
+      }
+
+      if (priorIsValid) {
+        await writeAndSync(backupTemporaryPath, priorContents);
+        await hooks.beforeBackupReplacement?.();
+        await rename(backupTemporaryPath, backupPath);
+      }
     }
 
     await hooks.beforePrimaryReplacement?.();
