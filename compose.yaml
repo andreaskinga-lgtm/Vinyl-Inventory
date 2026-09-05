@@ -1,0 +1,30 @@
+services:
+  app:
+    image: ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.0.0
+    init: true
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+      DISCOGS_USER: "${DISCOGS_USER:-}"
+      DISCOGS_TOKEN: "${DISCOGS_TOKEN:-}"
+    volumes:
+      - vinyl-inventory-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  vinyl-inventory-data:
+    name: vinyl-inventory-data
