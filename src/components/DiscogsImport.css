@@ -94,6 +94,45 @@
   gap: 0.75rem;
 }
 
+.discogs-credential-state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-input);
+  font-size: 0.9rem;
+}
+
+.discogs-credential-state--environment {
+  border-color: var(--color-success);
+}
+
+.discogs-credential-state--none {
+  border-color: var(--color-accent);
+}
+
+.discogs-credentials-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.discogs-credentials-form h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.discogs-credentials-form button {
+  align-self: flex-start;
+}
+
+.discogs-fetch-form {
+  margin: 0;
+}
+
 .discogs-field {
   display: flex;
   flex-direction: column;
@@ -129,24 +168,6 @@
 
 .discogs-field-hint a {
   color: var(--color-accent);
-}
-
-.discogs-remember {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  user-select: none;
-}
-
-.discogs-remember input[type="checkbox"] {
-  cursor: pointer;
-  accent-color: var(--color-accent);
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
 }
 
 /* ── Status messages ── */

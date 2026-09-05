@@ -8,8 +8,6 @@ import {
 } from "../utils/syncPlan";
 import "./DiscogsImport.css";
 
-const SAVED_TOKEN_PLACEHOLDER = "••••••••";
-
 const FIELD_LABELS = {
   coverUrl: "📷 Cover art",
   genre: "🎵 Genre",
@@ -33,12 +31,27 @@ function Thumb({ url, alt = "" }) {
   return <div className="discogs-thumb discogs-thumb--empty">🎵</div>;
 }
 
+function responseError(status, body, fallback) {
+  if (status === 401) {
+    return "Discogs credentials are required. Save credentials before fetching.";
+  }
+  if (status === 409) {
+    return "Discogs credentials are managed by the environment and cannot be changed.";
+  }
+  return body?.error || fallback;
+}
+
 function DiscogsImport({ existingRecords, onImport, onClose }) {
   // ── Phase "connect" state ──────────────────────────────────────────────
   const [phase, setPhase] = useState("connect");
   const [username, setUsername] = useState("");
-  const [token, setToken] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
+  const [source, setSource] = useState("none");
+  const [canEdit, setCanEdit] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configReady, setConfigReady] = useState(false);
+  const [savingCredentials, setSavingCredentials] = useState(false);
+  const [credentialsFormKey, setCredentialsFormKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null); // { page, totalPages }
@@ -61,62 +74,113 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
   const [pickerAnchorY, setPickerAnchorY] = useState(null);
   const modalRef = useRef(null);
 
-  // Pre-fill saved config on mount
-  useEffect(() => {
-    fetch("/api/discogs-config")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.username) setUsername(data.username);
-        if (data.hasToken) {
-          setToken(SAVED_TOKEN_PLACEHOLDER);
-          setRemember(true);
-        }
-      })
-      .catch(() => {});
+  const applyDiscogsConfig = useCallback((data) => {
+    const validSources = new Set(["environment", "saved", "none"]);
+    if (
+      !data ||
+      typeof data.username !== "string" ||
+      typeof data.hasToken !== "boolean" ||
+      !validSources.has(data.source) ||
+      typeof data.canEdit !== "boolean"
+    ) {
+      throw new Error("Invalid Discogs credential response.");
+    }
+
+    setUsername(data.username);
+    setHasToken(data.hasToken);
+    setSource(data.source);
+    setCanEdit(data.canEdit);
+    setCredentialsFormKey((key) => key + 1);
   }, []);
+
+  const loadDiscogsConfig = useCallback(async () => {
+    const response = await fetch("/api/discogs-config");
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        responseError(
+          response.status,
+          body,
+          `Unable to load Discogs credentials (HTTP ${response.status}).`,
+        ),
+      );
+    }
+    applyDiscogsConfig(body);
+  }, [applyDiscogsConfig]);
+
+  useEffect(() => {
+    loadDiscogsConfig()
+      .then(() => setConfigReady(true))
+      .catch((loadError) => {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load Discogs credentials.",
+        );
+      })
+      .finally(() => setConfigLoading(false));
+  }, [loadDiscogsConfig]);
 
   // ── Helpers ─────────────────────────────────────────────────────────
   function fetchPage(page, per_page) {
     const params = new URLSearchParams({
-      username: username.trim(),
       page: String(page),
       per_page: String(per_page),
     });
-    // Pass token inline when the user has typed a real one (not the placeholder)
-    const activeToken = token.trim();
-    if (activeToken && activeToken !== SAVED_TOKEN_PLACEHOLDER) {
-      params.set("token", activeToken);
-    }
     return fetch(`/api/discogs/collection?${params}`);
+  }
+
+  async function handleSaveCredentials(e) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const nextUsername = String(formData.get("username") ?? "").trim();
+    const nextToken = String(formData.get("token") ?? "").trim();
+
+    if (!nextUsername || !nextToken) {
+      setError("Username and personal access token are required.");
+      return;
+    }
+
+    setSavingCredentials(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/discogs-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: nextUsername,
+          token: nextToken,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          responseError(
+            response.status,
+            body,
+            `Unable to save Discogs credentials (HTTP ${response.status}).`,
+          ),
+        );
+      }
+
+      await loadDiscogsConfig();
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Unable to save Discogs credentials.",
+      );
+    } finally {
+      setSavingCredentials(false);
+    }
   }
 
   // ── Fetch all pages ──────────────────────────────────────────────────
   async function handleFetch(e) {
     e.preventDefault();
-    if (!username.trim()) {
-      setError("Username is required.");
+    if (!hasToken) {
+      setError("Discogs credentials are required. Save credentials before fetching.");
       return;
-    }
-    const activeToken = token.trim();
-    if (!activeToken) {
-      setError("Personal access token is required.");
-      return;
-    }
-
-    // Save config if "Remember" is checked and user entered a real token
-    if (remember && activeToken !== SAVED_TOKEN_PLACEHOLDER) {
-      try {
-        await fetch("/api/discogs-config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: username.trim(),
-            token: activeToken,
-          }),
-        });
-      } catch {
-        // Non-fatal — we can still try to fetch
-      }
     }
 
     setLoading(true);
@@ -129,10 +193,11 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
       if (!firstResp.ok) {
         const body = await firstResp.json().catch(() => ({}));
         throw new Error(
-          body.error ||
-            (firstResp.status === 401
-              ? "Invalid token or private collection."
-              : `HTTP ${firstResp.status}`),
+          responseError(
+            firstResp.status,
+            body,
+            `HTTP ${firstResp.status}`,
+          ),
         );
       }
       const firstData = await firstResp.json();
@@ -145,7 +210,9 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
         const resp = await fetchPage(page, 100);
         if (!resp.ok) {
           const body = await resp.json().catch(() => ({}));
-          throw new Error(body.error || `HTTP ${resp.status} on page ${page}`);
+          throw new Error(
+            responseError(resp.status, body, `HTTP ${resp.status} on page ${page}`),
+          );
         }
         const data = await resp.json();
         allReleases.push(...(data.releases ?? []));
@@ -245,48 +312,108 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
 
         {/* ── Phase A: Connect & Fetch ── */}
         {phase === "connect" && (
-          <form className="discogs-connect-form" onSubmit={handleFetch}>
-            <div className="discogs-field">
-              <span className="discogs-field-label">Discogs username</span>
-              <input
-                type="text"
-                value={username}
-                placeholder="your_username"
-                autoComplete="username"
-                autoFocus
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
+          <div className="discogs-connect-form">
+            {configLoading && (
+              <p className="discogs-progress">Loading Discogs credentials…</p>
+            )}
 
-            <div className="discogs-field">
-              <span className="discogs-field-label">Personal access token</span>
-              <input
-                type="password"
-                value={token}
-                placeholder="Paste your token here"
-                autoComplete="new-password"
-                onChange={(e) => setToken(e.target.value)}
-              />
-              <span className="discogs-field-hint">
-                Generate a token at{" "}
-                <a
-                  href="https://www.discogs.com/settings/developers"
-                  target="_blank"
-                  rel="noreferrer"
+            {!configLoading && configReady && source === "environment" && (
+              <div className="discogs-credential-state discogs-credential-state--environment">
+                <strong>Environment-managed credentials configured</strong>
+                <span>
+                  Discogs requests use the configured account{" "}
+                  <strong>{username}</strong>.
+                </span>
+                <span className="discogs-field-hint">
+                  These credentials are read-only in the app.
+                </span>
+              </div>
+            )}
+
+            {!configLoading && configReady && source === "saved" && (
+              <div className="discogs-credential-state discogs-credential-state--saved">
+                <strong>Saved credentials configured</strong>
+                <span>
+                  Discogs requests use the saved account{" "}
+                  <strong>{username}</strong>.
+                </span>
+              </div>
+            )}
+
+            {!configLoading && configReady && source === "none" && (
+              <div className="discogs-credential-state discogs-credential-state--none">
+                <strong>Discogs credentials are not configured</strong>
+                <span>Save a username and personal access token to connect.</span>
+              </div>
+            )}
+
+            {!configLoading &&
+              configReady &&
+              canEdit &&
+              source !== "environment" && (
+                <form
+                  key={credentialsFormKey}
+                  className="discogs-credentials-form"
+                  onSubmit={handleSaveCredentials}
                 >
-                  discogs.com/settings/developers
-                </a>
-              </span>
-            </div>
+                  <h4>
+                    {source === "saved"
+                      ? "Update saved credentials"
+                      : "Configure Discogs credentials"}
+                  </h4>
+                  <div className="discogs-field">
+                    <label className="discogs-field-label" htmlFor="discogs-username">
+                      Discogs username
+                    </label>
+                    <input
+                      id="discogs-username"
+                      name="username"
+                      type="text"
+                      defaultValue={username}
+                      placeholder="your_username"
+                      autoComplete="username"
+                      autoFocus={source === "none"}
+                      required
+                    />
+                  </div>
 
-            <label className="discogs-remember">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              Remember username and token
-            </label>
+                  <div className="discogs-field">
+                    <label className="discogs-field-label" htmlFor="discogs-token">
+                      Personal access token
+                    </label>
+                    <input
+                      id="discogs-token"
+                      name="token"
+                      type="password"
+                      placeholder={
+                        source === "saved"
+                          ? "Enter a new token to replace the saved one"
+                          : "Paste your token here"
+                      }
+                      autoComplete="new-password"
+                      required
+                    />
+                    <span className="discogs-field-hint">
+                      Generate a token at{" "}
+                      <a
+                        href="https://www.discogs.com/settings/developers"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        discogs.com/settings/developers
+                      </a>
+                    </span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="primary-btn"
+                    disabled={savingCredentials || loading}
+                  >
+                    {savingCredentials ? "Saving…" : "Save credentials"}
+                  </button>
+                </form>
+              )}
 
             {error && <p className="discogs-error">{error}</p>}
             {loading && (
@@ -297,26 +424,32 @@ function DiscogsImport({ existingRecords, onImport, onClose }) {
               </p>
             )}
 
-            <div className="discogs-import-actions">
-              <button
-                type="button"
-                className="cancel-btn"
-                onClick={onClose}
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="primary-btn" disabled={loading}>
-                {loading ? "Fetching…" : "Fetch Collection"}
-              </button>
-            </div>
+            <form className="discogs-fetch-form" onSubmit={handleFetch}>
+              <div className="discogs-import-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={onClose}
+                  disabled={loading || savingCredentials}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="primary-btn"
+                  disabled={loading || savingCredentials || !configReady || !hasToken}
+                >
+                  {loading ? "Fetching…" : "Fetch Collection"}
+                </button>
+              </div>
+            </form>
 
             <p className="discogs-attribution">
               This application uses Discogs’ API but is not affiliated with,
               sponsored or endorsed by Discogs. “Discogs” is a trademark of Zink
               Media, LLC.
             </p>
-          </form>
+          </div>
         )}
 
         {/* ── Phase B: Review & Sync ── */}
