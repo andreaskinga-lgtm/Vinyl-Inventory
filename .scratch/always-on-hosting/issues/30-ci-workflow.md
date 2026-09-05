@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by: 16
@@ -33,3 +33,10 @@ Before editing, read **CI, images, releases, and updates** in
 - A pull request and a `main` push each produce one lint/test result.
 - A deliberate test failure prevents the job from succeeding.
 - The workflow contains no secrets and does not publish artifacts or images.
+
+## Comments
+
+Added the Node 22 CI workflow with pull request and `main` push triggers, reusable
+`workflow_call`, read-only contents permission, lockfile-keyed npm caching, concurrency
+cancellation, and the required lint and Vitest checks. The standards and specification review
+found no actionable findings.
