@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "artist": "Sample Artist",
+    "title": "Sample Album",
+    "genre": "Sample Genre",
+    "subGenres": ["Sample SubGenre"],
+    "year": 2000,
+    "location": "Sample Location",
+    "coverUrl": ""
+  }
+]

@@ -1,7 +1,7 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
-Blocked by: 23
+Blocked by:
 
 # Build the production container image
 
@@ -38,3 +38,12 @@ Before editing, read **Container and Compose deployment** in
 - A restart preserves records and genre options.
 - A local single-platform image builds and runs. The release workflow owns the multi-architecture
   Buildx proof.
+
+## Comments
+
+- Implemented a multi-stage Node 22 production image with lockfile installs, production-only
+  dependencies, a non-root runtime, and a mounted `/data` default.
+- Scoped persisted-data ignore rules to the root `data/` directory and tracked the existing static
+  `src/data` modules so a clean checkout contains every build input.
+- Standards and spec reviews found no issues. Docker image and named-volume acceptance could not be
+  executed because Docker is unavailable in this environment.
