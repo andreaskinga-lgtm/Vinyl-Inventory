@@ -1,0 +1,5 @@
+services:
+  app:
+    # Replace the base port mapping instead of adding a second mapping.
+    ports: !override
+      - "8080:8080"

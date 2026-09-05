@@ -18,6 +18,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
 }
 
 .app-header h1 {
@@ -38,6 +39,24 @@
 }
 
 .random-mode-btn:hover {
+  background: var(--color-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-text);
+}
+
+.share-collection-btn {
+  padding: 0.65rem 0.85rem;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-input);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.share-collection-btn:hover {
   background: var(--color-hover);
   border-color: var(--color-accent-hover);
   color: var(--color-text);
@@ -158,6 +177,10 @@
 }
 
 @media (max-width: 768px) {
+  .app-header {
+    display: block;
+  }
+
   .search-input {
     flex-basis: 100%;
   }
@@ -168,6 +191,11 @@
 
   .app-header h1 {
     font-size: 2rem;
+  }
+
+  .app-header-top {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .collection-count {

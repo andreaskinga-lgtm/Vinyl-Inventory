@@ -10,7 +10,38 @@ import {
   SUB_GENRES as DEFAULT_SUB_GENRES,
 } from "./data/genreOptions";
 import DiscogsImport from "./components/DiscogsImport";
+import UpdatePrompt from "./components/UpdatePrompt";
+import ShareCollectionModal from "./components/ShareCollectionModal";
+import { useRegisterSW } from "virtual:pwa-register/react";
 import "./App.css";
+
+const UPDATE_CHECK_INTERVAL = 15 * 60 * 1000;
+
+function normalizeDiscogsConfig(data) {
+  const validSources = new Set(["environment", "saved", "none"]);
+  if (
+    !data ||
+    typeof data.username !== "string" ||
+    typeof data.hasToken !== "boolean" ||
+    !validSources.has(data.source) ||
+    typeof data.canEdit !== "boolean"
+  ) {
+    throw new Error("Invalid Discogs credential response.");
+  }
+  return data;
+}
+
+async function requestDiscogsConfig() {
+  const response = await fetch("/api/discogs-config");
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      body?.error ||
+        `Unable to load Discogs credentials (HTTP ${response.status}).`,
+    );
+  }
+  return normalizeDiscogsConfig(body);
+}
 
 function App() {
   const [records, setRecords] = useState([]);
@@ -25,9 +56,83 @@ function App() {
   const [subGenres, setSubGenres] = useState(DEFAULT_SUB_GENRES);
   const [randomMode, setRandomMode] = useState(false);
   const [showDiscogsImport, setShowDiscogsImport] = useState(false);
+  const [showShareCollection, setShowShareCollection] = useState(false);
+  const [discogsConfig, setDiscogsConfig] = useState(null);
+  const [discogsConfigLoading, setDiscogsConfigLoading] = useState(true);
+  const [discogsConfigError, setDiscogsConfigError] = useState(null);
   const initialized = useRef(false);
   const optionsInitialized = useRef(false);
   const bgRef = useRef(null);
+  const registrationRef = useRef(null);
+  const {
+    needRefresh: [isUpdateAvailable],
+    updateServiceWorker,
+  } = useRegisterSW({
+    immediate: true,
+    onRegisteredSW: (_swUrl, registration) => {
+      registrationRef.current = registration ?? null;
+    },
+  });
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const registration = registrationRef.current;
+      if (!registration) return;
+
+      registration.update().catch((error) => {
+        console.error("Unable to check for a PWA update:", error);
+      });
+    }, UPDATE_CHECK_INTERVAL);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  function handleReload() {
+    updateServiceWorker(true).catch((error) => {
+      console.error("Unable to activate the available PWA update:", error);
+    });
+  }
+
+  const handleCloseShareCollection = useCallback(
+    () => setShowShareCollection(false),
+    [],
+  );
+
+  const loadDiscogsConfig = useCallback(async () => {
+    setDiscogsConfig(await requestDiscogsConfig());
+  }, []);
+
+  useEffect(() => {
+    requestDiscogsConfig()
+      .then((config) => setDiscogsConfig(config))
+      .catch((error) => {
+        setDiscogsConfigError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load Discogs credentials.",
+        );
+      })
+      .finally(() => setDiscogsConfigLoading(false));
+  }, []);
+
+  const handleSaveDiscogsConfig = useCallback(
+    async ({ username, token }) => {
+      const response = await fetch("/api/discogs-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, token }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          body?.error ||
+            `Unable to save Discogs credentials (HTTP ${response.status}).`,
+        );
+      }
+      await loadDiscogsConfig();
+    },
+    [loadDiscogsConfig],
+  );
 
   // Load genre options from server on mount
   useEffect(() => {
@@ -199,9 +304,17 @@ function App() {
     );
   });
 
+  const updatePrompt = (
+    <UpdatePrompt
+      isUpdateAvailable={isUpdateAvailable}
+      onReload={handleReload}
+    />
+  );
+
   if (loading) {
     return (
       <>
+        {updatePrompt}
         <div
           className="parallax-bg"
           ref={bgRef}
@@ -218,6 +331,7 @@ function App() {
 
   return (
     <>
+      {updatePrompt}
       <div
         className="parallax-bg"
         ref={bgRef}
@@ -226,6 +340,15 @@ function App() {
       <header className="app-header">
         <div className="app-header-top">
           <h1>Vinyl Collection</h1>
+          <button
+            type="button"
+            className="share-collection-btn"
+            onClick={() => setShowShareCollection(true)}
+            aria-haspopup="dialog"
+            aria-expanded={showShareCollection}
+          >
+            Share collection
+          </button>
         </div>
         {!randomMode && (
           <p className="collection-count">{filtered.length} records</p>
@@ -333,7 +456,14 @@ function App() {
           existingRecords={records}
           onImport={handleDiscogsImport}
           onClose={() => setShowDiscogsImport(false)}
+          discogsConfig={discogsConfig}
+          discogsConfigLoading={discogsConfigLoading}
+          discogsConfigError={discogsConfigError}
+          onSaveDiscogsConfig={handleSaveDiscogsConfig}
         />
+      )}
+      {showShareCollection && (
+        <ShareCollectionModal onClose={handleCloseShareCollection} />
       )}
       {showPasswordPrompt && (
         <div

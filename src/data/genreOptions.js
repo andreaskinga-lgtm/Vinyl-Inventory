@@ -1,0 +1,31 @@
+export const GENRES = [
+  "Classical",
+  "Folk",
+  "Jazz",
+  "Lofi",
+  "Metal",
+  "Pop",
+  "Rap",
+  "Rock",
+];
+
+export const SUB_GENRES = [
+  "Acoustic",
+  "Alternative",
+  "Classic Rock",
+  "Country Rock",
+  "Electronic",
+  "Grunge",
+  "Hard Rock",
+  "Hardcore",
+  "Hyperpop",
+  "Indie",
+  "Melodic Hardcore",
+  "Metalcore",
+  "Pop Punk",
+  "Pop Rock",
+  "Post Hardcore",
+  "Prog",
+  "Soul-Jazz",
+  "Soundtrack",
+];

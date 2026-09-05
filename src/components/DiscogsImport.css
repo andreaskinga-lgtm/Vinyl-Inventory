@@ -94,6 +94,45 @@
   gap: 0.75rem;
 }
 
+.discogs-credential-state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-input);
+  font-size: 0.9rem;
+}
+
+.discogs-credential-state--environment {
+  border-color: var(--color-success);
+}
+
+.discogs-credential-state--none {
+  border-color: var(--color-accent);
+}
+
+.discogs-credentials-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.discogs-credentials-form h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.discogs-credentials-form button {
+  align-self: flex-start;
+}
+
+.discogs-fetch-form {
+  margin: 0;
+}
+
 .discogs-field {
   display: flex;
   flex-direction: column;
@@ -129,24 +168,6 @@
 
 .discogs-field-hint a {
   color: var(--color-accent);
-}
-
-.discogs-remember {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  user-select: none;
-}
-
-.discogs-remember input[type="checkbox"] {
-  cursor: pointer;
-  accent-color: var(--color-accent);
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
 }
 
 /* ── Status messages ── */
@@ -674,4 +695,54 @@
 
 .discogs-record-row--danger input[type="checkbox"] {
   accent-color: var(--color-danger);
+}
+
+/* ── Ambiguous section (needs manual match) ── */
+.discogs-section--ambiguous .discogs-section-header {
+  border-bottom-color: rgba(230, 178, 71, 0.4);
+}
+
+.discogs-section--ambiguous .discogs-section-title {
+  color: #e6b247;
+}
+
+.discogs-section--ambiguous .discogs-section-title input[type="checkbox"] {
+  accent-color: #e6b247;
+}
+
+/* ── Pressing hint (shown under a "new" record similar to a claimed one) ── */
+.discogs-pressing-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem 0.5rem 2.2rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.discogs-pressing-hint .discogs-thumb {
+  width: 24px;
+  height: 24px;
+}
+
+/* ── Reassign confirmation ── */
+.discogs-reassign-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.discogs-reassign-dialog {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }

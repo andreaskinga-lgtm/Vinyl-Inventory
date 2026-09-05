@@ -1,0 +1,3 @@
+services:
+  app:
+    image: "${VINYL_IMAGE:?set VINYL_IMAGE}"

@@ -1,0 +1,10 @@
+node_modules
+dist
+/data/
+.git
+.scratch
+coverage
+.env
+.env.*
+!.env.example
+npm-debug.log*

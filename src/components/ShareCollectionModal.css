@@ -1,0 +1,119 @@
+.share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 1rem;
+  overflow-y: auto;
+  background: rgb(0 0 0 / 60%);
+}
+
+.share-modal {
+  width: min(420px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 35%);
+  text-align: center;
+}
+
+.share-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.share-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.share-modal-close {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-input);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.share-modal-close:hover {
+  border-color: var(--color-accent-hover);
+  background-color: var(--color-hover);
+  color: var(--color-text);
+}
+
+.share-modal-invitation {
+  margin: 1.25rem 0 1rem;
+  color: var(--color-text);
+}
+
+.share-modal-qr {
+  width: min(256px, 100%);
+  margin: 0 auto;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.share-modal-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.share-modal-address-label {
+  margin: 1rem 0 0.35rem;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.share-modal-address {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0.75rem;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-input);
+  color: var(--color-text);
+  font-family: inherit;
+  user-select: text;
+}
+
+.share-modal-reassurance {
+  margin: 1rem 0 0;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+@media (max-width: 360px) {
+  .share-modal-overlay {
+    padding: 0.5rem;
+  }
+
+  .share-modal {
+    max-height: calc(100vh - 1rem);
+    padding: 1rem;
+  }
+
+  .share-modal-header {
+    gap: 0.5rem;
+  }
+
+  .share-modal-header h2 {
+    font-size: 1.3rem;
+  }
+}

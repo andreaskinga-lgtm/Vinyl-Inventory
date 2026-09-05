@@ -2,12 +2,26 @@
  * Normalizes an artist/title string for matching:
  * lowercased, leading article stripped, whitespace collapsed.
  */
-function normalizeStr(str) {
+export function normalizeStr(str) {
   return String(str ?? "")
     .toLowerCase()
     .trim()
     .replace(/^(the|a|an)\s+/, "")
     .replace(/\s+/g, " ");
+}
+
+/**
+ * The identity used by artist+title fallback matching: normalized artist and
+ * title joined by a separator that cannot occur in either. Returns `null` when
+ * both parts are empty, so blank records never match each other.
+ *
+ * Shared by classification and the UI so the key can only ever mean one thing.
+ * Its semantics are ADR-0001 territory — do not change what it matches.
+ */
+export function titleKey(record) {
+  const key =
+    normalizeStr(record?.artist) + "\x00" + normalizeStr(record?.title);
+  return key === "\x00" ? null : key;
 }
 
 /**
@@ -46,23 +60,27 @@ export function mapDiscogsRelease(item) {
 }
 
 /**
- * Returns true if a Discogs-mapped record matches an existing collection record.
- * Primary match: discogsId equality.
- * Fallback: normalized artist + title equality.
+ * Returns true if a Discogs-mapped record and an existing collection record
+ * are bound to the same specific release (discogsId equality). This is the
+ * only match that can apply regardless of the existing record's claimed state.
  */
-function isMatch(discogs, existing) {
-  if (
+function isPrimaryMatch(discogs, existing) {
+  return (
     discogs.discogsId != null &&
     existing.discogsId != null &&
     discogs.discogsId === existing.discogsId
-  ) {
-    return true;
-  }
-  const dk =
-    normalizeStr(discogs.artist) + "\x00" + normalizeStr(discogs.title);
-  const ek =
-    normalizeStr(existing.artist) + "\x00" + normalizeStr(existing.title);
-  return dk === ek && dk !== "\x00";
+  );
+}
+
+/**
+ * Returns true if a Discogs-mapped record and an existing collection record
+ * share a normalized artist + title. This fallback is only ever consulted
+ * for existing records that are still unclaimed (discogsId == null) — a
+ * claimed record must never be re-linked to a different release via this path.
+ */
+function isFallbackMatch(discogs, existing) {
+  const dk = titleKey(discogs);
+  return dk != null && dk === titleKey(existing);
 }
 
 /**
@@ -101,37 +119,66 @@ export function computeFieldsToUpdate(discogs, existing) {
 }
 
 /**
- * Partitions Discogs-mapped records into two groups:
- * - `newRecords`: not in the existing collection
- * - `matchedRecords`: already present; includes the computed field enrichments
+ * Partitions Discogs-mapped records into three groups:
+ * - `newRecords`: not in the existing collection (or all same-title
+ *   candidates are already claimed by a different release) — eligible to be
+ *   added as a new record, e.g. a second pressing of an album already owned.
+ * - `matchedRecords`: exactly one unclaimed existing record shares the
+ *   discogsId or artist+title — auto-matched, with computed field
+ *   enrichments.
+ * - `ambiguousRecords`: more than one unclaimed existing record shares
+ *   artist+title — cannot be auto-matched without guessing which physical
+ *   copy it belongs to; requires manual resolution. Each entry is
+ *   `{ discogs, candidateIds }`, where `candidateIds` are the ids of the
+ *   unclaimed local records that made it ambiguous. Callers need those ids:
+ *   the candidates are still awaiting manual resolution, so they must not be
+ *   treated as absent from Discogs (e.g. offered up for deletion).
+ *
+ * A record is "claimed" once its `discogsId` is set. Claimed records are
+ * never reassigned to a different incoming release via the artist+title
+ * fallback, even if their own linked release is no longer present in the
+ * fetched Discogs collection.
  *
  * @param {object[]} discogsRecords - Records processed through mapDiscogsRelease
  * @param {object[]} existingRecords - The current local collection
- * @returns {{ newRecords: object[], matchedRecords: object[] }}
+ * @returns {{ newRecords: object[], matchedRecords: object[], ambiguousRecords: { discogs: object, candidateIds: (string|number)[] }[] }}
  */
 export function findMatches(discogsRecords, existingRecords) {
   const newRecords = [];
   const matchedRecords = [];
+  const ambiguousRecords = [];
 
   for (const discogs of discogsRecords) {
-    const existing = existingRecords.find((e) => isMatch(discogs, e));
-    if (existing) {
+    const primaryMatch = existingRecords.find((e) =>
+      isPrimaryMatch(discogs, e),
+    );
+    if (primaryMatch) {
       // Already linked via discogsId — nothing left to do, skip entirely.
-      if (
-        existing.discogsId != null &&
-        existing.discogsId === discogs.discogsId
-      ) {
-        continue;
-      }
+      continue;
+    }
+
+    // Fallback matching only ever considers unclaimed candidates — a claimed
+    // record can't be re-linked to a different incoming release this way.
+    const fallbackCandidates = existingRecords.filter(
+      (e) => e.discogsId == null && isFallbackMatch(discogs, e),
+    );
+
+    if (fallbackCandidates.length === 0) {
+      newRecords.push(discogs);
+    } else if (fallbackCandidates.length === 1) {
+      const existing = fallbackCandidates[0];
       matchedRecords.push({
         discogs,
         existing,
         fieldsToUpdate: computeFieldsToUpdate(discogs, existing),
       });
     } else {
-      newRecords.push(discogs);
+      ambiguousRecords.push({
+        discogs,
+        candidateIds: fallbackCandidates.map((c) => c.id),
+      });
     }
   }
 
-  return { newRecords, matchedRecords };
+  return { newRecords, matchedRecords, ambiguousRecords };
 }
