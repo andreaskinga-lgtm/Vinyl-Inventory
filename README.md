@@ -39,7 +39,7 @@ You need Docker Compose and a 64-bit AMD64 or ARM64 host, including a Raspberry 
 
 Create a deployment directory: `mkdir vinyl-inventory && cd vinyl-inventory`.
 
-Download the pinned release file: `curl -fsSLO https://raw.githubusercontent.com/andreaskinga-lgtm/Vinyl-Inventory/v1.0.0/compose.yaml`.
+Download the pinned release file: `curl -fsSLO https://raw.githubusercontent.com/andreaskinga-lgtm/Vinyl-Inventory/v1.1.0/compose.yaml`.
 
 Start it: `docker compose up -d`.
 
@@ -53,7 +53,7 @@ The first run has an empty collection; enter edit mode to add records and option
 
 See [`docs/deployment.md`](docs/deployment.md) for credentials, addressing, backup, migration, updates, systemd, Pi notes, and troubleshooting.
 
-> **Release availability:** the Compose file is pinned to `v1.0.0`. Before relying on the public
+> **Release availability:** the Compose file is pinned to `v1.1.0`. Before relying on the public
 > download and image pull, a maintainer must make the GHCR package public and verify an
 > unauthenticated arm64 pull from a clean machine. Until then, use a maintainer-provided image
 > candidate rather than assuming the public image is available.

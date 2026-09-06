@@ -1,4 +1,4 @@
-Status: ready-for-human
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-terra (human-operated)
 Blocked by: 21, 24, 25, 27, 28, 29, 30, 31, 32, 33, 35, 36
@@ -36,3 +36,13 @@ Use Terra for release-integrity review; a human must perform the GHCR visibility
 - The published image digest matches the workflow output and the tested source commit.
 - The release is not marked complete until the public pull, health check, and documentation links
   all work from a clean environment.
+
+## Results
+
+- Published the signed `v1.0.0` release tag and verified the release workflow published the
+  `linux/amd64` and `linux/arm64` manifest.
+- Made `ghcr.io/andreaskinga-lgtm/vinyl-inventory` public.
+- On the Raspberry Pi, anonymously pulled
+  `ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.0.0` without `docker login`. The arm64 image
+  resolved to `sha256:fc6e1781e128a1cf51ec8e143fa5025f555cfcf8b2589d382d240536cacbd613`.
+- Started the published image and confirmed the health endpoint and collection API succeeded.

@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import bgImage from "./assets/RecordCollectionBG.png";
-import RecordList from "./components/RecordList";
-import RandomStack from "./components/RandomStack";
 import AddRecordForm from "./components/AddRecordForm";
 import EditRecordModal from "./components/EditRecordModal";
+import ListeningRoom from "./components/ListeningRoom";
 import { sampleRecords, generateId } from "./data/records.js";
 import {
   GENRES as DEFAULT_GENRES,
@@ -46,15 +44,12 @@ async function requestDiscogsConfig() {
 function App() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("artist-asc");
   const [editingRecord, setEditingRecord] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [genres, setGenres] = useState(DEFAULT_GENRES);
   const [subGenres, setSubGenres] = useState(DEFAULT_SUB_GENRES);
-  const [randomMode, setRandomMode] = useState(false);
   const [showDiscogsImport, setShowDiscogsImport] = useState(false);
   const [showShareCollection, setShowShareCollection] = useState(false);
   const [discogsConfig, setDiscogsConfig] = useState(null);
@@ -62,7 +57,6 @@ function App() {
   const [discogsConfigError, setDiscogsConfigError] = useState(null);
   const initialized = useRef(false);
   const optionsInitialized = useRef(false);
-  const bgRef = useRef(null);
   const registrationRef = useRef(null);
   const {
     needRefresh: [isUpdateAvailable],
@@ -259,51 +253,6 @@ function App() {
     [subGenres],
   );
 
-  // Handles parallax effect on background image
-  const maxScrollHeightRef = useRef(0);
-  useEffect(() => {
-    const parallaxFactor = 0.3;
-    const updateBg = () => {
-      if (!bgRef.current) return;
-      const currentScrollHeight = document.documentElement.scrollHeight;
-      if (currentScrollHeight > maxScrollHeightRef.current) {
-        maxScrollHeightRef.current = currentScrollHeight;
-      }
-      const maxScroll = maxScrollHeightRef.current - window.innerHeight;
-      const extraHeight = maxScroll * parallaxFactor;
-      bgRef.current.style.height = `calc(100vh + ${extraHeight}px)`;
-      const currentMaxScroll = currentScrollHeight - window.innerHeight;
-      const clampedScroll = Math.min(
-        window.scrollY,
-        Math.max(0, currentMaxScroll),
-      );
-      bgRef.current.style.transform = `translateY(${clampedScroll * -parallaxFactor}px)`;
-    };
-    updateBg();
-    window.addEventListener("scroll", updateBg, { passive: true });
-    window.addEventListener("resize", updateBg, { passive: true });
-    const observer = new ResizeObserver(updateBg);
-    observer.observe(document.documentElement);
-    return () => {
-      window.removeEventListener("scroll", updateBg);
-      window.removeEventListener("resize", updateBg);
-      observer.disconnect();
-    };
-  }, []);
-
-  // Searching logic - filter records by search query across multiple fields
-  const filtered = records.filter((r) => {
-    const q = search.toLowerCase();
-    return (
-      r.title.toLowerCase().includes(q) ||
-      r.artist.toLowerCase().includes(q) ||
-      r.genre.toLowerCase().includes(q) ||
-      (Array.isArray(r.subGenres) &&
-        r.subGenres.some((sg) => sg.toLowerCase().includes(q))) ||
-      (r.location && r.location.toLowerCase().includes(q))
-    );
-  });
-
   const updatePrompt = (
     <UpdatePrompt
       isUpdateAvailable={isUpdateAvailable}
@@ -313,128 +262,38 @@ function App() {
 
   if (loading) {
     return (
-      <>
+      <div className="variant-c app-loading">
         {updatePrompt}
-        <div
-          className="parallax-bg"
-          ref={bgRef}
-          style={{ backgroundImage: `url(${bgImage})` }}
-        />
-        <div
-          style={{ textAlign: "center", marginTop: "4rem", fontSize: "1.2rem" }}
-        >
-          Loading collection…
-        </div>
-      </>
+        <p>Loading collection…</p>
+      </div>
     );
   }
 
   return (
     <>
       {updatePrompt}
-      <div
-        className="parallax-bg"
-        ref={bgRef}
-        style={{ backgroundImage: `url(${bgImage})` }}
-      />
-      <header className="app-header">
-        <div className="app-header-top">
-          <h1>Vinyl Collection</h1>
-          <button
-            type="button"
-            className="share-collection-btn"
-            onClick={() => setShowShareCollection(true)}
-            aria-haspopup="dialog"
-            aria-expanded={showShareCollection}
-          >
-            Share collection
-          </button>
-        </div>
-        {!randomMode && (
-          <p className="collection-count">{filtered.length} records</p>
-        )}
-      </header>
-
-      {!randomMode && (
-        <div className="search-sort-row">
-          <input
-            className="search-input"
-            type="search"
-            autoComplete="off"
-            placeholder="Search by title, artist, genre, or location…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      <ListeningRoom
+        records={records}
+        editMode={editMode}
+        onEditRecord={setEditingRecord}
+        onRequestEditMode={() => {
+          setPasswordInput("");
+          setShowPasswordPrompt(true);
+        }}
+        onLockEditMode={() => setEditMode(false)}
+        onShare={() => setShowShareCollection(true)}
+        onSync={() => setShowDiscogsImport(true)}
+        addRecordControl={
+          <AddRecordForm
+            onAdd={handleAdd}
+            genres={genres}
+            subGenres={subGenres}
+            onAddSubGenre={handleAddSubGenre}
+            onDeleteSubGenre={handleDeleteSubGenre}
+            onAddGenre={handleAddGenre}
           />
-          {!randomMode && (
-            <select
-              className="sort-select"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-            >
-              <option value="artist-asc">Artist A–Z</option>
-              <option value="artist-desc">Artist Z–A</option>
-              <option value="year-asc">Year Asc</option>
-              <option value="year-desc">Year Desc</option>
-              <option value="genre-asc">Genre A–Z</option>
-              <option value="genre-desc">Genre Z–A</option>
-            </select>
-          )}
-
-          {!randomMode && !editMode && (
-            <button
-              className="random-mode-btn"
-              onClick={() => setRandomMode(true)}
-            >
-              Random
-            </button>
-          )}
-          <button
-            className={`edit-mode-btn${editMode ? " active" : ""}`}
-            onClick={() => {
-              if (editMode) {
-                setEditMode(false);
-              } else {
-                setPasswordInput("");
-                setShowPasswordPrompt(true);
-              }
-            }}
-          >
-            {editMode ? "Lock" : "Edit Mode"}
-          </button>
-          {editMode && (
-            <>
-              <AddRecordForm
-                onAdd={handleAdd}
-                genres={genres}
-                subGenres={subGenres}
-                onAddSubGenre={handleAddSubGenre}
-                onDeleteSubGenre={handleDeleteSubGenre}
-                onAddGenre={handleAddGenre}
-              />
-              <button
-                className="discogs-import-btn"
-                onClick={() => setShowDiscogsImport(true)}
-              >
-                Sync with Discogs
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {randomMode ? (
-        <RandomStack
-          records={filtered}
-          onBack={() => setRandomMode(false)}
-          onClickRecord={(record) => setEditingRecord(record)}
-        />
-      ) : (
-        <RecordList
-          records={filtered}
-          sort={sort}
-          onClickRecord={(record) => setEditingRecord(record)}
-        />
-      )}
+        }
+      />
 
       {editingRecord && (
         <EditRecordModal

@@ -1,7 +1,18 @@
 #root {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
+  min-height: 100vh;
+}
+
+.app-loading {
+  display: grid;
+  place-items: center;
+}
+
+.app-loading p {
+  color: #a8a099;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 .app-header {
