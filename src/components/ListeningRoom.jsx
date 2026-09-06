@@ -18,15 +18,17 @@ import {
 import genericVinyl from "../assets/generic-vinyl.svg";
 import "./ListeningRoom.css";
 
-function Art({ record, revealed = false }) {
+function Art({ record, revealed = false, showFallbackVinyl = false }) {
   return (
     <div className={`c-art${revealed ? " is-revealed" : ""}`}>
-      <img
-        className="c-art-wax"
-        src={record.vinylUrl || genericVinyl}
-        alt=""
-        loading="lazy"
-      />
+      {(record.vinylUrl || showFallbackVinyl) && (
+        <img
+          className="c-art-wax"
+          src={record.vinylUrl || genericVinyl}
+          alt=""
+          loading="lazy"
+        />
+      )}
       {record.coverUrl ? (
         <img
           className="c-art-front"
@@ -48,7 +50,7 @@ function Cell({ record, active, onActivate }) {
       className={`c-cell${active ? " on" : ""}`}
       onClick={onActivate}
     >
-      <Art record={record} revealed={active} />
+      <Art record={record} revealed={active} showFallbackVinyl />
       <span className="c-cell-label">
         <span>{record.title}</span>
         <em>{record.artist}</em>
