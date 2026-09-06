@@ -4,9 +4,9 @@
 
 Vinyl Inventory is a trusted-LAN service, not an internet service. It has no real authentication
 or authorization, so do not expose it through port forwarding, a public reverse proxy, or a
-public hostname. Use Docker Compose on a 64-bit `linux/amd64` or `linux/arm64` host. A Raspberry
-Pi 3 must run 64-bit Raspberry Pi OS; building images on the Pi is not a supported installation
-path.
+public hostname. Use Docker Compose and Git on a 64-bit `linux/amd64` or `linux/arm64` host. A
+Raspberry Pi 3 must run 64-bit Raspberry Pi OS; building images on the Pi is not a supported
+installation path.
 
 The checked-in deployment pin is `ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.0.0`. Public GHCR
 availability remains unverified until a maintainer makes the package public and verifies an
@@ -31,11 +31,13 @@ The override changes only the host port; guests must then use `http://<reserved-
 
 ## 3. Docker Compose install
 
-Create a directory, download the pinned Compose file, and start it:
+Clone the pinned release so the Compose file, port override, backup scripts, and migration tool
+are all available locally, then start it:
 
 ```sh
-mkdir vinyl-inventory && cd vinyl-inventory
-curl -fsSLO https://raw.githubusercontent.com/andreaskinga-lgtm/Vinyl-Inventory/v1.0.0/compose.yaml
+git clone --branch v1.0.0 --depth 1 \
+  https://github.com/andreaskinga-lgtm/Vinyl-Inventory.git vinyl-inventory
+cd vinyl-inventory
 docker compose up -d
 curl --fail --silent --show-error http://localhost/health
 curl --fail --silent --show-error http://localhost/api/records
@@ -112,7 +114,7 @@ tar -tzf "$LEGACY_ARCHIVE" | grep -Fqx "$(basename "$LEGACY_DATA_DIR")/genreOpti
 
 docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml \
   run --rm --user root --no-deps \
-  --mount "type=bind,src=$LEGACY_DATA_DIR,dst=/legacy,readonly" \
+  --volume "$LEGACY_DATA_DIR:/legacy:ro" \
   app node server/migrate-legacy-data.js --source /legacy --target /data
 ```
 
@@ -202,8 +204,15 @@ They install no scheduler and delete no archives.
 
 ## 8. Updates and rollback
 
-Back up first. Choose an explicit release tag, replace the image tag in `compose.yaml`, then pull,
-start, and verify:
+Back up first. The public GHCR release remains unverified until a maintainer makes the package
+public and verifies an unauthenticated arm64 pull from a clean machine. Do not run this public
+release procedure, or assume unlimited GHCR pulls, until that check passes. Maintainers testing
+the private candidate must authenticate with a least-privilege `read:packages` token, use
+`VINYL_IMAGE=ghcr.io/andreaskinga-lgtm/vinyl-inventory:sha-bb1fb8c` with
+`deploy/compose/compose.candidate.yaml`, and remove the credential after testing.
+
+Once public release availability is verified, choose an explicit release tag, replace the image
+tag in `compose.yaml`, then pull, start, and verify:
 
 ```sh
 ./deploy/backup/backup-volume.sh "$HOME/vinyl-inventory-backups"
