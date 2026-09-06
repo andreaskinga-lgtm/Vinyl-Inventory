@@ -116,6 +116,24 @@ function Cell({ record, active, onActivate }) {
   );
 }
 
+function TrackRows({ tracks }) {
+  return tracks.map((track, index) =>
+    track.type_ === "heading" ? (
+      <div key={index} className="c-track-heading">
+        {track.title}
+      </div>
+    ) : track.type_ === "track" ? (
+      <div key={index} className="c-track">
+        <span className="c-track-pos">{track.position}</span>
+        <span className="c-track-title">{track.title}</span>
+        {track.duration && (
+          <span className="c-track-dur">{track.duration}</span>
+        )}
+      </div>
+    ) : null,
+  );
+}
+
 function InlineDetail({ record, onClose, onEdit }) {
   const { loading, tracks } = useTracklist(record.discogsId);
   const images = imagesFor(record);
@@ -233,21 +251,7 @@ function InlineDetail({ record, onClose, onEdit }) {
               </div>
             ))
           ) : tracks?.length ? (
-            tracks.map((t, i) =>
-              t.type_ === "heading" ? (
-                <div key={i} className="c-track-heading">
-                  {t.title}
-                </div>
-              ) : t.type_ === "track" ? (
-                <div key={i} className="c-track">
-                  <span className="c-track-pos">{t.position}</span>
-                  <span className="c-track-title">{t.title}</span>
-                  {t.duration && (
-                    <span className="c-track-dur">{t.duration}</span>
-                  )}
-                </div>
-              ) : null,
-            )
+            <TrackRows tracks={tracks} />
           ) : (
             <p className="c-detail-note">No tracklist available.</p>
           )}
@@ -291,23 +295,7 @@ function TrackLines({ record }) {
   if (!tracks?.length)
     return <p className="c-flip-note">No tracklist available.</p>;
 
-  return (
-    <>
-      {tracks.map((t, i) =>
-        t.type_ === "heading" ? (
-          <div key={i} className="c-track-heading">
-            {t.title}
-          </div>
-        ) : t.type_ === "track" ? (
-          <div key={i} className="c-track">
-            <span className="c-track-pos">{t.position}</span>
-            <span className="c-track-title">{t.title}</span>
-            {t.duration && <span className="c-track-dur">{t.duration}</span>}
-          </div>
-        ) : null,
-      )}
-    </>
-  );
+  return <TrackRows tracks={tracks} />;
 }
 
 // The reverse of the sleeve: details up top, tracklist scrolling underneath.
