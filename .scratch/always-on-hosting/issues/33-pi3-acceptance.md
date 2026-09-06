@@ -1,4 +1,4 @@
-Status: ready-for-human
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna (human-operated)
 Blocked by: 24, 25, 27, 31
