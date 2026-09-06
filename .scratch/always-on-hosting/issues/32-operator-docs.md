@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-luna
 Blocked by: 21, 24, 25, 27, 28, 29, 33, 35, 36
@@ -40,3 +40,15 @@ section is reached; its commands and filenames are the source of truth.
   health check.
 - The text does not claim unlimited GHCR pulls, real authentication, internet safety, or a public
   image before the release ticket verifies it.
+
+## Comments
+
+- Replaced the README production guidance with the approved ten-line LAN quickstart and added the
+  13-section deployment guide. The guide consumes the checked-in Compose, backup/restore,
+  migration, systemd, PWA, and release artifacts.
+- Corrected the migration runbook to use Compose's supported read-only `--volume` bind mount,
+  made the Docker install obtain the required local operational artifacts, and documented the
+  authenticated SHA candidate route before the public image exists.
+- Standards and specification reviews were completed. The remaining observation is external to
+  this ticket: `v1.0.0` and public GHCR availability await the separate public-release ticket;
+  both documents explicitly state that condition and do not claim public availability.
