@@ -1,4 +1,3 @@
-/* PROTOTYPE — throwaway. Variant C: "Listening Room". */
 .variant-c {
   --ink: #0d0c0b;
   --ink-2: #17151300;
@@ -437,6 +436,20 @@
   color: var(--text-3);
 }
 
+.c-detail-edit {
+  display: block;
+  margin-top: 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--amber);
+  color: #241704;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 @media (min-width: 640px) {
   .c-detail {
     grid-template-columns: 240px 1fr;
@@ -458,7 +471,7 @@
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 54px; /* clears the prototype switcher */
+  bottom: max(1rem, env(safe-area-inset-bottom));
   z-index: 60;
   display: flex;
   flex-direction: column;
@@ -532,6 +545,41 @@
   background: rgba(232, 163, 61, 0.12);
 }
 
+.c-panel--list .add-record-toggle {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background-color: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 400;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+}
+
+.c-panel--list .add-record-form {
+  max-height: min(65vh, 620px);
+  margin: 0;
+  overflow-y: auto;
+  background-color: var(--panel-2);
+}
+
+@media (max-width: 560px) {
+  .c-panel--list .add-record-form {
+    padding: 1rem;
+  }
+
+  .c-panel--list .add-record-form .form-row {
+    flex-direction: column;
+  }
+
+  .c-panel--list .add-record-form .form-row > input,
+  .c-panel--list .add-record-form .form-row > select {
+    max-width: none !important;
+  }
+}
+
 .c-dock {
   display: flex;
   align-items: center;
@@ -598,6 +646,11 @@
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.c-dock-flip:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .c-dock-disc {
