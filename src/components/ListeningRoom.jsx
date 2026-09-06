@@ -37,80 +37,17 @@ function Art({ record, revealed = false }) {
   );
 }
 
-// Touch: a quick tap activates, a long press reveals the vinyl instead — and
-// neither is allowed to raise the native context menu / callout.
-const TAP_MAX_MS = 250;
-const HOLD_MS = 280;
-
-function usePressReveal(onActivate) {
-  const [held, setHeld] = useState(false);
-  const startedAt = useRef(0);
-  const holdTimer = useRef(null);
-  const swallowClick = useRef(false);
-
-  const clearHold = useCallback(() => {
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
-  }, []);
-
-  useEffect(() => clearHold, [clearHold]);
-
-  return {
-    held,
-    handlers: {
-      onContextMenu: (e) => e.preventDefault(),
-      onPointerDown: (e) => {
-        if (e.pointerType !== "touch") return;
-        startedAt.current = performance.now();
-        swallowClick.current = true;
-        clearHold();
-        holdTimer.current = setTimeout(() => setHeld(true), HOLD_MS);
-      },
-      onPointerUp: (e) => {
-        if (e.pointerType !== "touch") return;
-        clearHold();
-        const elapsed = performance.now() - startedAt.current;
-        setHeld(false);
-        // Queue behind the native click so it can't land on what we open.
-        if (elapsed <= TAP_MAX_MS) setTimeout(() => onActivate(), 0);
-      },
-      onPointerCancel: (e) => {
-        if (e.pointerType !== "touch") return;
-        clearHold();
-        setHeld(false);
-        swallowClick.current = false;
-      },
-      onClick: (e) => {
-        if (swallowClick.current) {
-          swallowClick.current = false;
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        onActivate();
-      },
-    },
-  };
-}
-
 function Cell({ record, active, onActivate }) {
-  const { held, handlers } = usePressReveal(onActivate);
-
   return (
     <button
       type="button"
       className={`c-cell${active ? " on" : ""}`}
-      {...handlers}
+      onClick={onActivate}
     >
-      <Art record={record} revealed={held} />
+      <Art record={record} revealed={active} />
       <span className="c-cell-label">
         <span>{record.title}</span>
         <em>{record.artist}</em>
-      </span>
-      <span className="c-cell-hold" aria-hidden>
-        hold to see the vinyl
       </span>
     </button>
   );
@@ -510,6 +447,7 @@ function ListeningRoom({
   const [activeId, setActiveId] = useState(null);
   const [flipping, setFlipping] = useState(false);
   const [cols, setCols] = useState(3);
+  const [mobileColumns, setMobileColumns] = useState(2);
   const gridRef = useRef(null);
   const rootRef = useRef(null);
 
@@ -531,7 +469,7 @@ function ListeningRoom({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [mobileColumns]);
 
   const activeIndex = activeId
     ? visible.findIndex((r) => r.id === activeId)
@@ -561,7 +499,10 @@ function ListeningRoom({
         {visible.length === 0 ? (
           <p className="c-empty">Nothing here. Try a different search.</p>
         ) : (
-          <div className="c-grid" ref={gridRef}>
+          <div
+            className={`c-grid${mobileColumns === 3 ? " c-grid--mobile-3" : ""}`}
+            ref={gridRef}
+          >
             {visible.map((r, i) => (
               <div key={r.id} className="c-cell-wrap" style={{ display: "contents" }}>
                 <Cell
@@ -623,6 +564,14 @@ function ListeningRoom({
         )}
         {dockPanel === "more" && (
           <div className="c-panel c-panel--list">
+            <button
+              type="button"
+              className="c-mobile-layout-toggle"
+              aria-pressed={mobileColumns === 3}
+              onClick={() => setMobileColumns((columns) => (columns === 2 ? 3 : 2))}
+            >
+              Show {mobileColumns === 2 ? "3" : "2"} columns
+            </button>
             <button
               type="button"
               aria-haspopup="dialog"
