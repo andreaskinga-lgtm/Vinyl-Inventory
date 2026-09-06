@@ -97,11 +97,16 @@ Only `records.json`, `genreOptions.json`, optional `discogsConfig.json`, and the
 The migration parses the required files and syntax-checks saved credentials without printing them.
 
 From a source checkout, set the operator-specific values and run the migration. Before public
-release availability is verified, use the candidate override and a maintainer-provided image.
+release availability is verified, authenticate to GHCR with a least-privilege `read:packages`
+token and use the published candidate image. Remove the Docker credential after testing.
 
 ```sh
 export LEGACY_DATA_DIR=/absolute/path/to/Vinyl-Inventory/data
-export VINYL_IMAGE=vinyl-inventory:local
+export GHCR_USERNAME=your-github-username
+export GHCR_READ_PACKAGES_TOKEN=your-read-packages-token
+printf '%s' "$GHCR_READ_PACKAGES_TOKEN" |
+  docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
+export VINYL_IMAGE=ghcr.io/andreaskinga-lgtm/vinyl-inventory:sha-bb1fb8c
 export LEGACY_START_COMMAND='sudo systemctl start your-legacy-vinyl-service'
 export LEGACY_ARCHIVE="$HOME/vinyl-legacy-$(date +%Y%m%d-%H%M%S).tar.gz"
 test -d "$LEGACY_DATA_DIR"
@@ -116,6 +121,7 @@ docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml \
   run --rm --user root --no-deps \
   --volume "$LEGACY_DATA_DIR:/legacy:ro" \
   app node server/migrate-legacy-data.js --source /legacy --target /data
+docker logout ghcr.io
 ```
 
 The target must be a pristine first-run volume. A used target requires an explicit, separately
