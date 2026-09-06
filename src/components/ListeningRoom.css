@@ -267,6 +267,9 @@
   z-index: 2;
   width: 30px;
   height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border-radius: 999px;
   border: 1px solid var(--hair);
   background: rgba(13, 12, 11, 0.7);
@@ -597,6 +600,9 @@
 .c-dock-btn {
   width: 44px;
   height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   flex: none;
   border: 0;
   border-radius: 999px;
@@ -631,10 +637,11 @@
 .c-dock-flip {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
   height: 46px;
   margin: 0 0.35rem;
-  padding: 0 1.15rem 0 0.5rem;
+  padding: 0 0.85rem;
   border: 0;
   border-radius: 999px;
   background: var(--amber);
@@ -954,6 +961,9 @@
 .c-flip-secondary {
   width: 44px;
   height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: 1px solid var(--hair);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
