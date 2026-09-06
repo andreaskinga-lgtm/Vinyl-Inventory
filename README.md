@@ -31,10 +31,37 @@ It is currently very much in a pre-alpha state, with a lot of rough edges. No da
 
 No router, no CSS framework, no external state library. All app state lives in `App.jsx` via `useState`/`useCallback`.
 
-## Getting Started
+## Run it on your LAN
+
+Vinyl Inventory runs on a trusted LAN; it has no real authentication and must not be exposed to the internet.
+
+You need Docker Compose and a 64-bit AMD64 or ARM64 host, including a Raspberry Pi 3 with 64-bit Raspberry Pi OS.
+
+Create a deployment directory: `mkdir vinyl-inventory && cd vinyl-inventory`.
+
+Download the pinned release file: `curl -fsSLO https://raw.githubusercontent.com/andreaskinga-lgtm/Vinyl-Inventory/v1.0.0/compose.yaml`.
+
+Start it: `docker compose up -d`.
+
+Verify it: `curl -f http://localhost/health`.
+
+Reserve the host's IP address in your router so the guest URL does not change.
+
+Open `http://<reserved-ip>` on another device connected to the same LAN.
+
+The first run has an empty collection; enter edit mode to add records and optionally configure Discogs.
+
+See [`docs/deployment.md`](docs/deployment.md) for credentials, addressing, backup, migration, updates, systemd, Pi notes, and troubleshooting.
+
+> **Release availability:** the Compose file is pinned to `v1.0.0`. Before relying on the public
+> download and image pull, a maintainer must make the GHCR package public and verify an
+> unauthenticated arm64 pull from a clean machine. Until then, use a maintainer-provided image
+> candidate rather than assuming the public image is available.
+
+## Development
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -71,103 +98,6 @@ State changes auto-save via POST requests. A `useRef` guard prevents saving duri
 
 Run `npm run build` before `npm start`. The server initializes `DATA_DIR` with the collection
 and genre files on first startup, serves `/health`, and serves the built SPA with its API.
-
-## Migrating legacy Pi data to Compose
-
-Stop every process that can write the legacy `data/` directory, then set these values. Use the
-candidate override until the first release image is published; do not pull the `v1.0.0` pin.
-`LEGACY_START_COMMAND` must be the command that restarts the old service if rollback is needed.
-
-```sh
-export LEGACY_DATA_DIR=/absolute/path/to/Vinyl-Inventory/data
-export VINYL_IMAGE=vinyl-inventory:local
-export LEGACY_START_COMMAND='sudo systemctl start your-legacy-vinyl-service'
-export LEGACY_ARCHIVE="$HOME/vinyl-legacy-$(date +%Y%m%d-%H%M%S).tar.gz"
-test -d "$LEGACY_DATA_DIR"
-
-sudo systemctl stop your-legacy-vinyl-service
-tar -C "$(dirname "$LEGACY_DATA_DIR")" \
-  -czf "$LEGACY_ARCHIVE" \
-  "$(basename "$LEGACY_DATA_DIR")"
-tar -tzf "$LEGACY_ARCHIVE" >/dev/null
-tar -tzf "$LEGACY_ARCHIVE" |
-  grep -Fqx "$(basename "$LEGACY_DATA_DIR")/records.json"
-tar -tzf "$LEGACY_ARCHIVE" |
-  grep -Fqx "$(basename "$LEGACY_DATA_DIR")/genreOptions.json"
-
-docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml \
-  run --rm --user root --no-deps \
-  --mount "type=bind,src=$LEGACY_DATA_DIR,dst=/legacy,readonly" \
-  app node server/migrate-legacy-data.js --source /legacy --target /data
-```
-
-The migration parses both required files and syntax-checks saved Discogs credentials before it
-changes the volume. It transfers only recognized JSON files and matching backups, leaves the
-legacy directory untouched, and refuses a used target. After separately backing up a used target,
-an intentional replacement may append `--overwrite`; this preserves each pre-migration primary
-as its `.bak` instead of replacing that recovery copy with a legacy backup.
-
-Start and verify the candidate with operator-known values. The two pressing IDs must identify
-separate owned copies of the same artist and title. The credential source is `environment`,
-`saved`, or `none`.
-
-```sh
-export EXPECTED_RECORD_COUNT=123
-export PRESSING_ONE_ID='replace-with-first-record-id'
-export PRESSING_TWO_ID='replace-with-second-record-id'
-export EXPECTED_DISCOGS_SOURCE=saved
-
-docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml up -d
-curl --fail --silent --show-error http://127.0.0.1/health
-curl --fail --silent --show-error http://127.0.0.1/api/records | node -e '
-let input = "";
-process.stdin.on("data", chunk => input += chunk).on("end", () => {
-  const records = JSON.parse(input);
-  const first = records.find(record => String(record.id) === process.env.PRESSING_ONE_ID);
-  const second = records.find(record => String(record.id) === process.env.PRESSING_TWO_ID);
-  if (records.length !== Number(process.env.EXPECTED_RECORD_COUNT)) process.exit(1);
-  if (!first || !second || first.id === second.id) process.exit(1);
-  if (first.artist !== second.artist || first.title !== second.title) process.exit(1);
-  console.log(`Verified ${records.length} records and two independent pressings.`);
-});'
-curl --fail --silent --show-error http://127.0.0.1/api/discogs-config | node -e '
-let input = "";
-process.stdin.on("data", chunk => input += chunk).on("end", () => {
-  const config = JSON.parse(input);
-  if (config.source !== process.env.EXPECTED_DISCOGS_SOURCE) process.exit(1);
-  console.log(`Verified Discogs credential source: ${config.source}`);
-});'
-docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml exec \
-  app node -e "Promise.all(['records.json','genreOptions.json'].map(async name => {
-    await import('node:fs/promises').then(fs => fs.access('/data/' + name, fs.constants.R_OK));
-  })).catch(() => process.exit(1))"
-```
-
-If any check fails, retain the failed named volume for inspection and roll back without `-v`:
-
-```sh
-docker compose -f compose.yaml -f deploy/compose/compose.candidate.yaml down
-sh -c "$LEGACY_START_COMMAND"
-```
-
-Do not remove the legacy directory until its separate archive and the migrated collection have
-both been verified.
-
-## PWA update smoke test
-
-To verify a production update on one browser origin, serve build A with `npm run build &&
-PORT=8080 npm start`, open the site in Chrome, and install or launch the PWA. Stop that server,
-build and serve build B from the next app revision on the same port, then return to the still-open
-PWA. Within the update check window, it must show **New version available - Reload** without
-reloading first. Select the action once and confirm the new shell loads after one reload.
-
-While the PWA remains installed, open its DevTools console and run
-`await fetch("/api/records?smoke=1").then(async (response) => ({ status: response.status,
-contentType: response.headers.get("content-type"), body: await response.text() }))`. It must return
-status `200`, an `application/json` content type, and a JSON body rather than the app shell. The
-same request from `curl http://127.0.0.1:8080/api/records` is also useful for checking the server
-directly. This smoke test must reuse the same browser profile and origin for both builds; clearing
-site data would remove the waiting-worker scenario.
 
 ## Project Structure
 
