@@ -8,7 +8,7 @@ public hostname. Use Docker Compose and Git on a 64-bit `linux/amd64` or `linux/
 Raspberry Pi 3 must run 64-bit Raspberry Pi OS; building images on the Pi is not a supported
 installation path.
 
-The checked-in deployment pin is `ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.0.0`. Public GHCR
+The checked-in deployment pin is `ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.1.0`. Public GHCR
 availability remains unverified until a maintainer makes the package public and verifies an
 unauthenticated arm64 pull from a clean machine. Do not assume unlimited GHCR pulls.
 
@@ -35,7 +35,7 @@ Clone the pinned release so the Compose file, port override, backup scripts, and
 are all available locally, then start it:
 
 ```sh
-git clone --branch v1.0.0 --depth 1 \
+git clone --branch v1.1.0 --depth 1 \
   https://github.com/andreaskinga-lgtm/Vinyl-Inventory.git vinyl-inventory
 cd vinyl-inventory
 docker compose up -d

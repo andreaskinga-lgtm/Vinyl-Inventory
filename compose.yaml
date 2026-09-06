@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.0.0
+    image: ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.1.0
     init: true
     restart: unless-stopped
     ports:
