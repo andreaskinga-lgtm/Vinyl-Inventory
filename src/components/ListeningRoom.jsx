@@ -15,14 +15,18 @@ import {
   sortRecords,
   useTracklist,
 } from "../utils/collectionView.js";
+import genericVinyl from "../assets/generic-vinyl.svg";
 import "./ListeningRoom.css";
 
 function Art({ record, revealed = false }) {
   return (
     <div className={`c-art${revealed ? " is-revealed" : ""}`}>
-      {record.vinylUrl && (
-        <img className="c-art-wax" src={record.vinylUrl} alt="" loading="lazy" />
-      )}
+      <img
+        className="c-art-wax"
+        src={record.vinylUrl || genericVinyl}
+        alt=""
+        loading="lazy"
+      />
       {record.coverUrl ? (
         <img
           className="c-art-front"
