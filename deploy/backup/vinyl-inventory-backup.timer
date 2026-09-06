@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Vinyl Inventory volume backup daily
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=vinyl-inventory-backup.service
+
+[Install]
+WantedBy=timers.target

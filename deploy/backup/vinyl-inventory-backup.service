@@ -1,0 +1,18 @@
+[Unit]
+Description=Back up the Vinyl Inventory Docker volume
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/vinyl-inventory
+Environment=BACKUP_DESTINATION=/var/backups/vinyl-inventory
+ExecStart=/opt/vinyl-inventory/deploy/backup/backup-volume.sh ${BACKUP_DESTINATION}
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/backups/vinyl-inventory

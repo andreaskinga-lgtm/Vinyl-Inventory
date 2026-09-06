@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
 Model: gpt-5.6-sol
 Blocked by: 27
@@ -37,3 +37,14 @@ Keep stopped-volume archive, destructive restore, verification, and rollback tog
 - The optional timer has explicit destination configuration and retention guidance but performs
   no implicit deletion.
 
+## Comments
+
+- Added fail-closed whole-volume backup and restore commands, including writer-state handling,
+  staged archive validation, pre-restore and failed-state archives, and conditional restart.
+- Added a standalone automated fixture that restores records, genres, credentials, and `.bak`
+  files byte-for-byte, plus invalid-archive and restarting-writer coverage.
+- Ran a real local-image Compose round trip: `/health` returned `{"ok":true}` and the restored
+  API record count matched the original count of 2.
+- Added an optional hardened systemd backup timer example and a runbook fragment with secret,
+  off-Pi retention, verification, and rollback guidance. The timer deletes nothing.
+- Final Standards and Spec reviews reported no significant issues.
