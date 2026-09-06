@@ -1,0 +1,807 @@
+/* PROTOTYPE — throwaway. Variant B: "Divider Shelf". */
+.variant-b {
+  --walnut: #17110c;
+  --walnut-2: #221913;
+  --shelf: #3b2718;
+  --kraft: #d8bd8c;
+  --kraft-2: #c2a273;
+  --cream: #f6efe3;
+  --cream-2: #cbbda6;
+  --cream-3: #93836d;
+  --teal: #4fb3a4;
+  --jump-h: 44px;
+
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      140% 60% at 50% 0%,
+      rgba(120, 84, 48, 0.28),
+      rgba(0, 0, 0, 0) 65%
+    ),
+    var(--walnut);
+  color: var(--cream);
+  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header (scrolls away) ─────────────────────────────────────── */
+.b-head {
+  position: relative;
+  padding: 1.4rem clamp(0.9rem, 4vw, 2.5rem) 1rem;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.b-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.b-wordmark {
+  margin: 0;
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  font-weight: 300;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.b-wordmark span {
+  display: block;
+  font-weight: 800;
+  color: var(--kraft);
+}
+
+.b-utils-toggle {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 189, 140, 0.28);
+  background: transparent;
+  color: var(--kraft);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.b-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.b-search {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 189, 140, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--cream);
+  font: inherit;
+  font-size: 0.92rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.b-search::placeholder {
+  color: var(--cream-3);
+}
+
+.b-search:focus {
+  border-color: var(--kraft);
+}
+
+.b-sort {
+  height: 42px;
+  padding: 0 2rem 0 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 189, 140, 0.2);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--cream);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  max-width: 46%;
+}
+
+.b-utils {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 0.7rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(216, 189, 140, 0.22);
+}
+
+.b-utils button {
+  border: 0;
+  border-radius: 8px;
+  background: rgba(216, 189, 140, 0.14);
+  color: var(--kraft);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+}
+
+.b-utils-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cream-3);
+}
+
+/* ── Jump strip (sticky) ───────────────────────────────────────── */
+.b-jump {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--jump-h);
+  padding: 0 clamp(0.9rem, 4vw, 2.5rem);
+  background: rgba(23, 17, 12, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(216, 189, 140, 0.16);
+}
+
+.b-jump-flip {
+  flex: none;
+  height: 28px;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--teal);
+  color: #06231f;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.b-jump-keys {
+  display: flex;
+  gap: 0.15rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.b-jump-keys::-webkit-scrollbar {
+  display: none;
+}
+
+.b-jump-keys button {
+  flex: none;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cream-2);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.b-jump-keys button:hover {
+  background: rgba(216, 189, 140, 0.18);
+  color: var(--cream);
+}
+
+/* ── Shelves ───────────────────────────────────────────────────── */
+.b-shelves {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 clamp(0.9rem, 4vw, 2.5rem) 6rem;
+}
+
+.b-section {
+  scroll-margin-top: var(--jump-h);
+  margin-top: 1.6rem;
+}
+
+.b-divider {
+  position: sticky;
+  top: var(--jump-h);
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  padding: 0.7rem 0 0.5rem;
+  background: linear-gradient(
+    180deg,
+    var(--walnut) 55%,
+    rgba(23, 17, 12, 0) 100%
+  );
+}
+
+.b-divider-tab {
+  display: inline-grid;
+  place-items: center;
+  min-width: 3rem;
+  padding: 0.3rem 0.9rem 0.35rem;
+  background: linear-gradient(180deg, var(--kraft), var(--kraft-2));
+  color: #34240f;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 4px 10px 0 0;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.b-divider-rule {
+  flex: 1;
+  height: 2px;
+  margin-bottom: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(216, 189, 140, 0.4) 0 6px,
+    rgba(216, 189, 140, 0) 6px 12px
+  );
+}
+
+.b-divider-count {
+  margin-bottom: 3px;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: var(--cream-3);
+}
+
+.b-shelf {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem 0.6rem;
+  padding: 0.4rem 0 0.9rem;
+}
+
+@media (min-width: 700px) {
+  .b-shelf {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1.4rem 1.2rem;
+  }
+}
+
+.b-shelf-lip {
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #6b4a2c, var(--shelf) 55%, #150e09);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.5),
+    0 14px 22px -14px rgba(0, 0, 0, 0.9);
+}
+
+.b-slot {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.b-cover {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #2a1e15;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 8px 16px -10px rgba(0, 0, 0, 0.9);
+  transform-origin: bottom center;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.b-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.b-cover-wax {
+  opacity: 0;
+  transform: translateX(12%);
+  transition: opacity 0.28s ease, transform 0.38s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.b-cover-blank {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  color: var(--cream-3);
+}
+
+.b-slot:hover .b-cover {
+  transform: translateY(-8px) rotate(-1.2deg);
+}
+
+.b-slot:hover .b-cover-wax {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.b-slot-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.b-slot-title {
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.2;
+  color: var(--cream);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.b-slot-artist {
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cream-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.b-empty {
+  text-align: center;
+  color: var(--cream-3);
+  padding: 4rem 1rem;
+}
+
+/* ── Detail: a full-screen page, not a modal ───────────────────── */
+.b-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--walnut-2);
+  animation: b-slide 0.28s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+@keyframes b-slide {
+  from {
+    transform: translateY(3%);
+    opacity: 0;
+  }
+}
+
+.b-detail-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem clamp(0.9rem, 4vw, 2.5rem);
+  border-bottom: 1px solid rgba(216, 189, 140, 0.16);
+  background: rgba(23, 17, 12, 0.9);
+}
+
+.b-detail-bar button {
+  border: 0;
+  background: transparent;
+  color: var(--kraft);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+.b-detail-tab {
+  padding: 0.2rem 0.7rem;
+  border-radius: 3px 8px 0 0;
+  background: var(--kraft);
+  color: #34240f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.b-detail-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.b-detail-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 1.5rem clamp(0.9rem, 4vw, 2.5rem) 1.75rem;
+}
+
+.b-detail-hero-wash {
+  position: absolute;
+  inset: -30% -10% 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(60px) saturate(1.4);
+  opacity: 0.4;
+}
+
+.b-detail-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(34, 25, 19, 0.4),
+    var(--walnut-2) 88%
+  );
+}
+
+.b-detail-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  text-align: center;
+}
+
+.b-detail-art {
+  position: relative;
+  width: min(300px, 66vw);
+  aspect-ratio: 1;
+  border-radius: 3px;
+  overflow: visible;
+}
+
+.b-detail-art > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 26px 46px -20px rgba(0, 0, 0, 0.95);
+}
+
+.b-detail-thumbs {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.b-detail-thumbs button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+  overflow: hidden;
+}
+
+.b-detail-thumbs button.on {
+  opacity: 1;
+  border-color: var(--kraft);
+}
+
+.b-detail-thumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.b-detail-artist {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--kraft);
+}
+
+.b-detail-titles h1 {
+  margin: 0.35rem 0 0.4rem;
+  font-size: clamp(1.4rem, 6vw, 2.4rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.b-detail-meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--cream-2);
+}
+
+.b-detail-loc {
+  margin: 0.4rem 0 0;
+  font-size: 0.74rem;
+  color: var(--cream-3);
+}
+
+.b-detail-tracks {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 clamp(0.9rem, 4vw, 2.5rem) 5rem;
+}
+
+.b-detail-tracks h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--cream-3);
+}
+
+.b-tracklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.b-track {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.62rem 0;
+  border-bottom: 1px solid rgba(216, 189, 140, 0.12);
+  font-size: 0.9rem;
+}
+
+.b-track-pos,
+.b-track-dur {
+  font-size: 0.75rem;
+  color: var(--cream-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.b-track-heading {
+  padding: 1rem 0 0.3rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kraft);
+}
+
+.b-track--skeleton span {
+  grid-column: 1 / -1;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.13),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-size: 200% 100%;
+  animation: b-shimmer 1.3s linear infinite;
+}
+
+@keyframes b-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.b-detail-note {
+  color: var(--cream-3);
+  font-size: 0.85rem;
+}
+
+.b-detail-credit {
+  display: inline-block;
+  margin-top: 1.2rem;
+  font-size: 0.72rem;
+  color: var(--cream-3);
+}
+
+@media (min-width: 820px) {
+  .b-detail-hero-inner {
+    flex-direction: row;
+    align-items: flex-end;
+    text-align: left;
+    gap: 2.2rem;
+    padding-top: 1rem;
+  }
+
+  .b-detail-art {
+    flex: none;
+    width: 260px;
+  }
+
+  .b-detail-tracks {
+    max-width: 1000px;
+  }
+}
+
+/* ── Flip view: a bin you flip through ─────────────────────────── */
+.b-flip {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 5rem;
+}
+
+.b-flip-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: var(--jump-h);
+  padding: 0 clamp(0.9rem, 4vw, 2.5rem);
+  border-bottom: 1px solid rgba(216, 189, 140, 0.16);
+  box-sizing: border-box;
+}
+
+.b-flip-back {
+  border: 0;
+  background: transparent;
+  color: var(--kraft);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.b-flip-tab {
+  padding: 0.2rem 0.8rem;
+  border-radius: 3px 8px 0 0;
+  background: var(--kraft);
+  color: #34240f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.b-flip-bin {
+  position: relative;
+  width: min(80vw, 360px);
+  aspect-ratio: 1;
+  margin: clamp(2rem, 8vh, 4rem) 0 0;
+  perspective: 1200px;
+  touch-action: pan-y;
+}
+
+.b-flip-card {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  transform-origin: bottom center;
+  transform: translateY(calc(var(--i) * -6px))
+    rotateX(calc(var(--i) * 2deg)) scale(calc(1 - var(--i) * 0.05));
+  filter: brightness(calc(1 - var(--i) * 0.16));
+  transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+}
+
+.b-flip-card .b-cover {
+  height: 100%;
+  box-shadow: 0 22px 36px -16px rgba(0, 0, 0, 0.95);
+}
+
+.b-flip-card.out-left {
+  transform: translateX(-40%) rotateY(72deg);
+  opacity: 0;
+}
+
+.b-flip-card.out-right {
+  transform: translateX(40%) rotateY(-72deg);
+  opacity: 0;
+}
+
+.b-flip-lip {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  bottom: -12px;
+  height: 16px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #6b4a2c, var(--shelf) 55%, #150e09);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.8);
+}
+
+.b-flip-info {
+  margin-top: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+
+.b-flip-info strong {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.b-flip-info span {
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kraft);
+}
+
+.b-flip-info em {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--cream-3);
+}
+
+.b-flip-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.b-flip-actions button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--teal);
+  color: #06231f;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.8rem 2rem;
+  cursor: pointer;
+}
+
+.b-flip-actions span {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cream-3);
+}
+
+.b-flip-done {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+  color: var(--cream-2);
+}
+
+.b-flip-done button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--teal);
+  color: #06231f;
+  font: inherit;
+  padding: 0.7rem 1.6rem;
+  cursor: pointer;
+}

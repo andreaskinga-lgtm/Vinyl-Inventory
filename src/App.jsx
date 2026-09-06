@@ -13,6 +13,8 @@ import DiscogsImport from "./components/DiscogsImport";
 import UpdatePrompt from "./components/UpdatePrompt";
 import ShareCollectionModal from "./components/ShareCollectionModal";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import RedesignPrototype from "./prototypes/redesign/index.jsx";
+import { requestedVariant } from "./prototypes/redesign/shared.js";
 import "./App.css";
 
 const UPDATE_CHECK_INTERVAL = 15 * 60 * 1000;
@@ -311,6 +313,12 @@ function App() {
     />
   );
 
+  // PROTOTYPE (throwaway): ?variant=A|B|C swaps the whole browse surface for a
+  // redesign candidate. Data loading above stays exactly as it is. Dev only.
+  if (import.meta.env.DEV && requestedVariant() && !loading) {
+    return <RedesignPrototype records={records} />;
+  }
+
   if (loading) {
     return (
       <>
@@ -337,8 +345,7 @@ function App() {
         ref={bgRef}
         style={{ backgroundImage: `url(${bgImage})` }}
       />
-      <header className="app-header">
-        <div className="app-header-top">
+      <header className="app-header">        <div className="app-header-top">
           <h1>Vinyl Collection</h1>
           <button
             type="button"

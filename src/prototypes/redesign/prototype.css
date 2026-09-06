@@ -1,0 +1,15 @@
+/* PROTOTYPE — throwaway. Neutralises the production shell so each variant
+   controls its own full-viewport canvas. */
+body.prototype-active {
+  overflow: hidden;
+}
+
+body.prototype-active #root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+body.prototype-active .parallax-bg {
+  display: none;
+}

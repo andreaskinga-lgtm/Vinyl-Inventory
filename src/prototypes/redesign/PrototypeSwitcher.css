@@ -1,0 +1,53 @@
+/* PROTOTYPE — throwaway. Intentionally ugly so it reads as scaffolding. */
+.proto-switcher {
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #101010;
+  border: 1px solid #00e5a0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.proto-switcher button {
+  all: unset;
+  cursor: pointer;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #00e5a0;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.proto-switcher button:hover {
+  background: #00e5a0;
+  color: #101010;
+}
+
+.proto-switcher-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  color: #f2f2f2;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.proto-switcher-label em {
+  font-style: normal;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: #00e5a0;
+  color: #101010;
+}

@@ -1,0 +1,947 @@
+/* PROTOTYPE — throwaway. Variant C: "Listening Room". */
+.variant-c {
+  --ink: #0d0c0b;
+  --ink-2: #17151300;
+  --panel: #1b1917;
+  --panel-2: #262320;
+  --hair: rgba(255, 255, 255, 0.09);
+  --text: #f2ede6;
+  --text-2: #a8a099;
+  --text-3: #6f6862;
+  --amber: #e8a33d;
+  --dock-h: 62px;
+
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      70% 45% at 50% -5%,
+      rgba(232, 163, 61, 0.14),
+      rgba(0, 0, 0, 0) 70%
+    ),
+    var(--ink);
+  color: var(--text);
+  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.c-topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.6rem clamp(0.8rem, 3vw, 2rem) 0.9rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.c-topline span:first-child {
+  color: var(--text-2);
+}
+
+.c-room {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 clamp(0.8rem, 3vw, 2rem)
+    calc(var(--dock-h) + 5.5rem);
+}
+
+.c-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+}
+
+@media (min-width: 640px) {
+  .c-grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.9rem;
+  }
+}
+
+/* ── Cell: pure art, label only on hover/focus ─────────────────── */
+.c-cell {
+  all: unset;
+  position: relative;
+  cursor: pointer;
+  display: block;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--panel);
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.c-art {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.c-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.c-art-front {
+  z-index: 1;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+/* The wax slides out from behind the sleeve instead of cross-fading. */
+.c-art-wax {
+  z-index: 0;
+  transform: translateX(0) scale(0.92);
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+/* Revealed = hovered (pointer) or long-pressed (touch). */
+.c-art.is-revealed .c-art-front {
+  transform: translateX(-16%);
+}
+
+.c-art.is-revealed .c-art-wax {
+  transform: translateX(26%) scale(1);
+}
+
+@media (hover: hover) {
+  .c-cell:hover .c-art-front {
+    transform: translateX(-16%);
+  }
+
+  .c-cell:hover .c-art-wax {
+    transform: translateX(26%) scale(1);
+  }
+}
+
+.c-art-blank {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  color: var(--text-3);
+  background: var(--panel);
+}
+
+.c-cell-label {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 2.2rem 0.6rem 0.55rem;
+  background: linear-gradient(
+    180deg,
+    rgba(13, 12, 11, 0) 0%,
+    rgba(13, 12, 11, 0.86) 62%
+  );
+  text-align: left;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+}
+
+.c-cell:hover .c-cell-label,
+.c-cell:focus-visible .c-cell-label,
+.c-cell.on .c-cell-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.c-cell-label span {
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c-cell-label em {
+  font-style: normal;
+  font-size: 0.63rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* First-run affordance for the long press; touch only. */
+.c-cell-hold {
+  display: none;
+}
+
+/* Touch devices have no hover — always show a quiet label there. */
+@media (hover: none) {
+  .c-cell-label {
+    opacity: 1;
+    transform: none;
+  }
+
+  .c-cell-hold {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 3;
+    display: block;
+    padding: 0.35rem 0.5rem;
+    background: rgba(13, 12, 11, 0.82);
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .c-art.is-revealed ~ .c-cell-hold {
+    opacity: 1;
+  }
+
+  .c-art.is-revealed + .c-cell-label {
+    opacity: 0;
+  }
+}
+
+.c-cell.on {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.c-empty {
+  text-align: center;
+  color: var(--text-3);
+  padding: 5rem 1rem;
+}
+
+/* ── Inline detail: expands in the grid flow, never overlays ───── */
+.c-detail {
+  grid-column: 1 / -1;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 0.5rem 0 1rem;
+  padding: 1.1rem;
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  scroll-margin: 5rem;
+  animation: c-open 0.24s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+@keyframes c-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.c-detail-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--hair);
+  background: rgba(13, 12, 11, 0.7);
+  color: var(--text-2);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.c-detail-art {
+  position: relative;
+  width: min(220px, 55%);
+  aspect-ratio: 1;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--panel-2);
+  touch-action: pan-y;
+}
+
+.c-detail-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.c-detail-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 30px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: rgba(13, 12, 11, 0.62);
+  backdrop-filter: blur(4px);
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.c-detail-arrow:hover {
+  background: rgba(232, 163, 61, 0.85);
+  color: #241704;
+}
+
+.c-detail-arrow--prev {
+  left: 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.c-detail-arrow--next {
+  right: 0;
+  border-radius: 6px 0 0 6px;
+}
+
+.c-detail-counter {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(13, 12, 11, 0.72);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+}
+
+.c-detail-artist {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.c-detail-title {
+  margin: 0.3rem 0 0.35rem;
+  font-size: clamp(1.15rem, 4.5vw, 1.6rem);
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.c-detail-meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+
+.c-detail-loc {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+
+/* Fixed height so the async tracklist can't push the page around. */
+.c-detail-tracks {
+  height: 190px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: 0.9rem;
+  padding-right: 0.4rem;
+  border-top: 1px solid var(--hair);
+}
+
+.c-track {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.42rem 0;
+  border-bottom: 1px solid var(--hair);
+  font-size: 0.83rem;
+}
+
+.c-track-pos,
+.c-track-dur {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.c-track-heading {
+  padding: 0.7rem 0 0.25rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.c-track--skeleton span {
+  grid-column: 1 / -1;
+  height: 9px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-size: 200% 100%;
+  animation: c-shimmer 1.3s linear infinite;
+}
+
+@keyframes c-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.c-detail-note {
+  color: var(--text-3);
+  font-size: 0.8rem;
+}
+
+.c-detail-credit {
+  display: inline-block;
+  margin-top: 0.7rem;
+  font-size: 0.68rem;
+  color: var(--text-3);
+}
+
+@media (min-width: 640px) {
+  .c-detail {
+    grid-template-columns: 240px 1fr;
+    gap: 1.6rem;
+    padding: 1.5rem;
+  }
+
+  .c-detail-art {
+    width: 100%;
+  }
+
+  .c-detail-tracks {
+    height: 200px;
+  }
+}
+
+/* ── The dock ──────────────────────────────────────────────────── */
+.c-dock-zone {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 54px; /* clears the prototype switcher */
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(560px, calc(100vw - 1.5rem));
+}
+
+.c-panel {
+  width: 100%;
+  padding: 0.55rem;
+  border-radius: 16px;
+  background: rgba(27, 25, 23, 0.94);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    inset 0 0 0 1px var(--hair),
+    0 20px 44px rgba(0, 0, 0, 0.6);
+  animation: c-pop 0.18s ease;
+}
+
+@keyframes c-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.c-panel input {
+  width: 100%;
+  height: 42px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.c-panel input::placeholder {
+  color: var(--text-3);
+}
+
+.c-panel--list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.c-panel--list button {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+}
+
+.c-panel--list button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.c-panel--list button.on {
+  color: var(--amber);
+  background: rgba(232, 163, 61, 0.12);
+}
+
+.c-dock {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  height: var(--dock-h);
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: rgba(27, 25, 23, 0.92);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    inset 0 0 0 1px var(--hair),
+    0 18px 40px rgba(0, 0, 0, 0.6);
+}
+
+.c-dock-btn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.c-dock-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+}
+
+.c-dock-btn.on {
+  background: rgba(232, 163, 61, 0.16);
+  color: var(--amber);
+}
+
+.c-dock-btn.has::after {
+  content: "";
+  display: block;
+  width: 5px;
+  height: 5px;
+  margin: -4px auto 0;
+  border-radius: 999px;
+  background: var(--amber);
+}
+
+.c-dock-flip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 46px;
+  margin: 0 0.35rem;
+  padding: 0 1.15rem 0 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--amber);
+  color: #241704;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.c-dock-disc {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, #241704 0 14%, rgba(0, 0, 0, 0) 15%),
+    repeating-radial-gradient(
+      circle,
+      #1c1204 0 1.5px,
+      #100b03 1.5px 3px
+    );
+  animation: c-spin 4s linear infinite;
+}
+
+@keyframes c-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Flip view: the turntable ──────────────────────────────────── */
+.c-flip {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 4rem 1rem 7rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.c-flip-glow {
+  position: absolute;
+  inset: -20%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(90px) saturate(1.6);
+  opacity: 0.35;
+  transition: background-image 0.4s ease;
+}
+
+.c-flip-exit {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 3;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: rgba(13, 12, 11, 0.6);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+}
+
+.c-flip-stage {
+  position: relative;
+  z-index: 2;
+  width: min(74vw, 340px);
+  aspect-ratio: 1;
+  margin-top: clamp(3rem, 11vh, 6rem);
+  perspective: 1400px;
+  touch-action: pan-y;
+}
+
+/* A straight vertical stack — each record behind peeks up above the one in
+   front, like a bin tipped toward you. No rotation, no lateral spread.
+   Two things are load-bearing here:
+   1. Every state uses the SAME transform function list, or the browser falls
+      back to matrix interpolation and rotateY(180deg) degenerates into a 2D
+      squash that never triggers backface-visibility.
+   2. Each card and each face gets its own translateZ. Coplanar layers inside a
+      3D rendering context sort ambiguously, which left the front artwork on
+      top of the flipped card and swallowed every scroll/tap meant for the
+      tracklist behind it. */
+.c-flip-card {
+  --lift: calc(var(--i) * -22px);
+  --shrink: calc(1 - var(--i) * 0.035);
+  --depth: calc(var(--i) * -4px);
+
+  position: absolute;
+  inset: 0;
+  z-index: calc(20 - var(--i));
+  cursor: pointer;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transform: translateX(0) translateY(var(--lift)) translateZ(var(--depth))
+    scale(var(--shrink)) rotateY(0deg) rotate(0deg);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.25, 1),
+    opacity 0.24s ease;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.c-flip-card.flipped {
+  transform: translateX(0) translateY(var(--lift)) translateZ(var(--depth))
+    scale(var(--shrink)) rotateY(180deg) rotate(0deg);
+}
+
+.c-flip-card.out-left {
+  transform: translateX(-120%) translateY(var(--lift)) translateZ(var(--depth))
+    scale(var(--shrink)) rotateY(0deg) rotate(-10deg);
+  opacity: 0;
+  transition-duration: 0.21s;
+}
+
+.c-flip-card.out-right {
+  transform: translateX(120%) translateY(var(--lift)) translateZ(var(--depth))
+    scale(var(--shrink)) rotateY(0deg) rotate(10deg);
+  opacity: 0;
+  transition-duration: 0.21s;
+}
+
+.c-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 28px 50px -20px rgba(0, 0, 0, 0.95);
+}
+
+.c-flip-face--front {
+  transform: translateZ(1px);
+}
+
+/* Depth dimming lives on an overlay rather than a filter on the card:
+   `filter` is a grouping property and would flatten the card's preserve-3d
+   context, disabling backface-visibility for the entire flip. */
+.c-flip-face--front::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 3, 2, calc(var(--i) * 0.14));
+  pointer-events: none;
+}
+
+.c-flip-face--front .c-art {
+  height: 100%;
+}
+
+.c-flip-face--back {
+  transform: rotateY(180deg) translateZ(1px);
+  background: var(--panel-2);
+}
+
+/* ── Reverse of the sleeve ─────────────────────────────────────── */
+.c-back {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.9rem 0.95rem 0.75rem;
+  box-sizing: border-box;
+  text-align: left;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.014) 0 2px,
+      rgba(0, 0, 0, 0) 2px 4px
+    ),
+    var(--panel-2);
+}
+
+.c-back-head {
+  flex: none;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.c-back-artist {
+  margin: 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.c-back-head h3 {
+  margin: 0.2rem 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.c-back-meta {
+  margin: 0;
+  font-size: 0.66rem;
+  color: var(--text-2);
+}
+
+.c-back-loc {
+  margin: 0.15rem 0 0;
+  font-size: 0.62rem;
+  color: var(--text-3);
+}
+
+.c-back-tracks {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0.45rem;
+  padding-right: 0.35rem;
+  touch-action: pan-y;
+  mask-image: linear-gradient(
+    180deg,
+    #000 0,
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
+}
+
+.c-back-tracks::-webkit-scrollbar {
+  width: 3px;
+}
+
+.c-back-tracks::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.c-back .c-track {
+  grid-template-columns: 1.6rem 1fr auto;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+  font-size: 0.7rem;
+}
+
+.c-back .c-track-pos,
+.c-back .c-track-dur {
+  font-size: 0.6rem;
+}
+
+.c-back .c-track-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c-flip-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.68rem;
+  color: var(--text-3);
+}
+
+.c-flip-meta {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  text-align: center;
+}
+
+.c-flip-meta strong {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.c-flip-meta span {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.c-flip-controls {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.c-flip-primary {
+  border: 0;
+  border-radius: 999px;
+  background: var(--amber);
+  color: #241704;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.85rem 2.4rem;
+  cursor: pointer;
+}
+
+.c-flip-secondary {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-2);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.c-flip-count {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  min-width: 3.5rem;
+}
+
+.c-flip-hint {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.c-flip-done {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.c-flip-done button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--amber);
+  color: #241704;
+  font: inherit;
+  padding: 0.7rem 1.6rem;
+  cursor: pointer;
+}
