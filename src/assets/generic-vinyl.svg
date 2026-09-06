@@ -6,6 +6,9 @@
   <circle cx="256" cy="256" r="163" fill="none" stroke="#181818" stroke-width="3"/>
   <circle cx="256" cy="256" r="132" fill="none" stroke="#161616" stroke-width="3"/>
   <circle cx="256" cy="256" r="101" fill="none" stroke="#181818" stroke-width="3"/>
-  <circle cx="256" cy="256" r="70" fill="#101010"/>
+  <circle cx="256" cy="256" r="70" fill="#dfcfaf" stroke="#bca77e" stroke-width="4"/>
+  <circle cx="256" cy="256" r="52" fill="none" stroke="#c4ae84" stroke-width="2"/>
+  <text x="256" y="248" fill="#32291f" font-family="sans-serif" font-size="16" font-weight="700" text-anchor="middle">VINYL</text>
+  <text x="256" y="273" fill="#5b4d3b" font-family="sans-serif" font-size="10" letter-spacing="3" text-anchor="middle">RECORD</text>
   <circle cx="256" cy="256" r="9" fill="#050505"/>
 </svg>
