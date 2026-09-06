@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server/index.js",
-    "test": "vitest run"
+    "test": "vitest run && npm run test:backup",
+    "test:backup": "node --test deploy/backup/volume-backup-restore.node-test.mjs"
   },
   "dependencies": {
     "express": "^5.2.1",
