@@ -13,6 +13,7 @@ dist-ssr
 dev-dist/
 *.local
 .env
+/PI_UPDATE.md
 
 # Server-persisted records data
 /data/

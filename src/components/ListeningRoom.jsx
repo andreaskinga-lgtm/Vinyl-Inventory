@@ -440,10 +440,10 @@ function FlipView({ records, onExit }) {
 function ListeningRoom({
   records,
   editMode,
-  addRecordControl,
   onEditRecord,
   onRequestEditMode,
   onLockEditMode,
+  onRequestAddRecord,
   onShare,
   onSync,
 }) {
@@ -598,7 +598,19 @@ function ListeningRoom({
             >
               {editMode ? "Lock edit mode" : "Edit mode"}
             </button>
-            {editMode && addRecordControl}
+            {editMode && (
+              <button
+                type="button"
+                className="add-record-toggle"
+                aria-haspopup="dialog"
+                onClick={() => {
+                  setDockPanel(null);
+                  onRequestAddRecord();
+                }}
+              >
+                + Add Record
+              </button>
+            )}
             {editMode && (
               <button
                 type="button"
@@ -616,7 +628,7 @@ function ListeningRoom({
         <div className="c-dock">
           <button
             type="button"
-            className={`c-dock-btn${dockPanel === "search" ? " on" : ""}${query ? " has" : ""}`}
+            className={`c-dock-btn c-dock-btn--search${dockPanel === "search" ? " on" : ""}${query ? " has" : ""}`}
             onClick={() =>
               setDockPanel((p) => (p === "search" ? null : "search"))
             }
@@ -639,7 +651,7 @@ function ListeningRoom({
             onClick={() => setFlipping(true)}
             disabled={visible.length === 0}
           >
-            <span className="c-dock-disc" />
+            <img className="c-dock-disc" src="/vinyl-icon.svg" alt="" />
             Flip
           </button>
 

@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import CoverArtPicker from "./CoverArtPicker";
 import SubGenrePicker from "./SubGenrePicker";
+import "./RecordModal.css";
 import "./EditRecordModal.css";
 
 function EditRecordModal({
@@ -131,14 +132,14 @@ function EditRecordModal({
 
   if (readOnly) {
     return (
-      <div className="edit-modal-overlay" onClick={onClose}>
+      <div className="record-modal-overlay" onClick={onClose}>
         <div
-          className="edit-modal edit-modal--readonly"
+          className="record-modal record-modal--readonly"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="edit-modal-header">
+          <div className="record-modal-header">
             <h3>Record Details</h3>
-            <button className="edit-modal-close" onClick={onClose}>
+            <button className="record-modal-close" onClick={onClose}>
               ✕
             </button>
           </div>
@@ -294,14 +295,14 @@ function EditRecordModal({
   }
 
   return (
-    <div className="edit-modal-overlay" onClick={onClose}>
-      <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="edit-modal-header">
+    <div className="record-modal-overlay" onClick={onClose}>
+      <div className="record-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="record-modal-header">
           <h3>Edit Record</h3>
-          <div className="edit-modal-header-actions">
+          <div className="record-modal-header-actions">
             <button
               type="button"
-              className="edit-modal-close"
+              className="record-modal-close"
               onClick={onClose}
             >
               ✕
@@ -342,7 +343,7 @@ function EditRecordModal({
           </div>
         </div>
 
-        <form className="edit-modal-form" onSubmit={handleSubmit}>
+        <form className="record-modal-form" onSubmit={handleSubmit}>
           <label>
             Artist *
             <input
@@ -363,7 +364,7 @@ function EditRecordModal({
               required
             />
           </label>
-          <div className="edit-modal-row">
+          <div className="record-modal-row">
             <label>
               Year
               <input
@@ -403,8 +404,8 @@ function EditRecordModal({
               </select>
             </label>
           </div>
-          <div className="edit-modal-field">
-            <span className="edit-modal-label">Sub Genres</span>
+          <div className="record-modal-field">
+            <span className="record-modal-label">Sub Genres</span>
             <SubGenrePicker
               options={subGenreOptions}
               value={formData.subGenres}
@@ -455,7 +456,7 @@ function EditRecordModal({
               placeholder="https://... (shown in carousel)"
             />
           </label>
-          <div className="edit-modal-actions">
+          <div className="record-modal-actions">
             <button type="submit">Save</button>
             {canDelete && !isDirty ? (
               <button
