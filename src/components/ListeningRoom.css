@@ -554,28 +554,6 @@
   }
 }
 
-.c-panel--list .add-record-form {
-  max-height: min(65vh, 620px);
-  margin: 0;
-  overflow-y: auto;
-  background-color: var(--panel-2);
-}
-
-@media (max-width: 560px) {
-  .c-panel--list .add-record-form {
-    padding: 1rem;
-  }
-
-  .c-panel--list .add-record-form .form-row {
-    flex-direction: column;
-  }
-
-  .c-panel--list .add-record-form .form-row > input,
-  .c-panel--list .add-record-form .form-row > select {
-    max-width: none !important;
-  }
-}
-
 .c-dock {
   display: flex;
   align-items: center;
@@ -607,6 +585,10 @@
   transition:
     background 0.15s,
     color 0.15s;
+}
+
+.c-dock-btn--search {
+  font-size: 1.5rem;
 }
 
 .c-dock-btn:hover {
@@ -645,6 +627,7 @@
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.1em;
+  line-height: 1;
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
@@ -656,19 +639,10 @@
 }
 
 .c-dock-disc {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle, #241704 0 14%, rgba(0, 0, 0, 0) 15%),
-    repeating-radial-gradient(circle, #1c1204 0 1.5px, #100b03 1.5px 3px);
-  animation: c-spin 4s linear infinite;
-}
-
-@keyframes c-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  width: 24px;
+  height: 24px;
+  display: block;
+  flex: 0 0 auto;
 }
 
 /* ── Flip view: the turntable ──────────────────────────────────── */
@@ -700,13 +674,17 @@
   top: 1rem;
   right: 1rem;
   z-index: 3;
+  display: flex;
+  align-items: center;
   border: 1px solid var(--hair);
   border-radius: 999px;
   background: rgba(13, 12, 11, 0.6);
   color: var(--text-2);
   font: inherit;
   font-size: 0.78rem;
-  padding: 0.45rem 0.9rem;
+  line-height: 1;
+  min-height: 32px;
+  padding: 2px 0.9rem 0;
   cursor: pointer;
 }
 

@@ -1,56 +1,3 @@
-.edit-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.edit-modal {
-  background: var(--color-surface);
-  border-radius: 12px;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.edit-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.edit-modal-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.edit-modal-header h3 {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.edit-modal-close {
-  background: none;
-  border: none;
-  color: var(--color-text-secondary);
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-}
-
-.edit-modal-close:hover {
-  color: var(--color-danger);
-  border-color: transparent;
-}
-
 .edit-modal-delete {
   background: rgba(255, 107, 107, 0.15);
   border: 2px solid var(--color-danger);
@@ -139,104 +86,8 @@
   gap: 0.5rem;
 }
 
-.edit-modal-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-}
-
-.edit-modal-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  margin-bottom: 0.75rem;
-}
-
-.edit-modal-label {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-}
-
-.edit-modal-form input,
-.edit-modal-form select {
-  padding: 0.6rem 0.8rem;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-input);
-  color: inherit;
-  font-size: 0.95rem;
-  width: 100%;
-  box-sizing: border-box;
-  min-width: 0;
-}
-
-.edit-modal-form select.placeholder {
-  color: var(--color-text-placeholder);
-}
-
-.edit-modal-form select {
-  padding-right: 2em;
-}
-
-.edit-modal-form select[multiple] {
-  min-height: 6rem;
-}
-
-.edit-modal-form input:focus,
-.edit-modal-form select:focus {
-  outline: 2px solid var(--color-focus);
-  border-color: transparent;
-}
-
-.edit-modal-row {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.edit-modal-row label {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.edit-modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.edit-modal-actions button {
-  flex: 1;
-}
-
-.edit-modal-actions button[type="submit"] {
-  background: var(--color-accent);
-  color: var(--color-text);
-  border: none;
-  font-weight: 600;
-}
-
-.edit-modal-actions button[type="submit"]:hover {
-  background: var(--color-accent-hover);
-  border-color: transparent;
-}
-
-.edit-modal-actions .cancel-btn {
-  background: transparent;
-  color: var(--color-text-secondary);
-  border: 2px solid var(--color-border);
-}
-
-.edit-modal-actions .cancel-btn:hover {
-  border-color: var(--color-accent-hover);
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
 /* ── Read-only compact layout ── */
-.edit-modal--readonly {
+.record-modal--readonly {
   max-width: 600px;
 }
 
@@ -446,10 +297,7 @@
 }
 
 @media (max-width: 767px) {
-  .edit-modal {
-    max-width: 400px;
-  }
-  .edit-modal--readonly {
+  .record-modal--readonly {
     padding: 1rem;
   }
 

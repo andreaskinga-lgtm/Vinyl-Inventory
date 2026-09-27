@@ -48,6 +48,7 @@ function App() {
   const [editMode, setEditMode] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
+  const [showAddRecord, setShowAddRecord] = useState(false);
   const [genres, setGenres] = useState(DEFAULT_GENRES);
   const [subGenres, setSubGenres] = useState(DEFAULT_SUB_GENRES);
   const [showDiscogsImport, setShowDiscogsImport] = useState(false);
@@ -281,20 +282,22 @@ function App() {
           setShowPasswordPrompt(true);
         }}
         onLockEditMode={() => setEditMode(false)}
+        onRequestAddRecord={() => setShowAddRecord(true)}
         onShare={() => setShowShareCollection(true)}
         onSync={() => setShowDiscogsImport(true)}
-        addRecordControl={
-          <AddRecordForm
-            onAdd={handleAdd}
-            genres={genres}
-            subGenres={subGenres}
-            onAddSubGenre={handleAddSubGenre}
-            onDeleteSubGenre={handleDeleteSubGenre}
-            onAddGenre={handleAddGenre}
-          />
-        }
       />
 
+      {showAddRecord && (
+        <AddRecordForm
+          onAdd={handleAdd}
+          onClose={() => setShowAddRecord(false)}
+          genres={genres}
+          subGenres={subGenres}
+          onAddSubGenre={handleAddSubGenre}
+          onDeleteSubGenre={handleDeleteSubGenre}
+          onAddGenre={handleAddGenre}
+        />
+      )}
       {editingRecord && (
         <EditRecordModal
           key={editingRecord.id}
