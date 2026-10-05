@@ -12,11 +12,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { GENRES, SUB_GENRES } from "../src/data/genreOptions.js";
 import { atomicWriteJson, createJsonStore } from "./json-store.js";
+import { normalizeSiteSettings } from "./site-settings.js";
 
 const RESOURCES = Object.freeze([
   ["records", "records.json", true],
   ["genreOptions", "genreOptions.json", true],
   ["discogsConfig", "discogsConfig.json", false],
+  ["siteSettings", "siteSettings.json", false],
 ]);
 const DEFAULT_GENRE_OPTIONS = Object.freeze({
   genres: GENRES,
@@ -29,6 +31,20 @@ function parseJson(contents, filePath) {
   } catch (error) {
     throw new Error(`Invalid JSON in ${filePath}`, { cause: error });
   }
+}
+
+function parseResourceValue(resource, contents, filePath) {
+  const value = parseJson(contents, filePath);
+  if (resource === "siteSettings") {
+    try {
+      return normalizeSiteSettings(value);
+    } catch (error) {
+      throw new Error(`Invalid Site Settings in ${filePath}`, {
+        cause: error,
+      });
+    }
+  }
+  return value;
 }
 
 async function readRegularFile(filePath, { required = false } = {}) {
@@ -69,10 +85,15 @@ async function preflightSource(sourceDir) {
     resources.set(resource, {
       fileName,
       contents,
-      value: contents === null ? null : parseJson(contents, filePath),
+      value:
+        contents === null
+          ? null
+          : parseResourceValue(resource, contents, filePath),
       backupContents,
       backupValue:
-        backupContents === null ? null : parseJson(backupContents, backupPath),
+        backupContents === null
+          ? null
+          : parseResourceValue(resource, backupContents, backupPath),
     });
   }
 
@@ -147,7 +168,8 @@ async function targetIsPristine(targetDir) {
   return (
     valuesEqual(records, []) &&
     valuesEqual(genreOptions, DEFAULT_GENRE_OPTIONS) &&
-    !(await pathExists(resolveWithinTarget(targetDir, "discogsConfig.json")))
+    !(await pathExists(resolveWithinTarget(targetDir, "discogsConfig.json"))) &&
+    !(await pathExists(resolveWithinTarget(targetDir, "siteSettings.json")))
   );
 }
 
@@ -228,6 +250,11 @@ export async function migrateLegacyData({
       "Migrating discogsConfig.json; the target volume and its backups contain saved credentials.",
     );
   }
+  if (resources.has("siteSettings")) {
+    log(
+      "Migrating siteSettings.json; the target volume and its backups may contain the Visitor Wi-Fi passphrase.",
+    );
+  }
 
   if (!overwrite) {
     for (const [, fileName, required] of RESOURCES) {
@@ -249,6 +276,8 @@ export async function migrateLegacyData({
           await store.writeDiscogsConfig(source.value, {
             serializedValue: source.contents,
           });
+        } else if (resource === "siteSettings") {
+          await store.writeSiteSettings(source.value);
         } else {
           await store[
             `write${resource[0].toUpperCase()}${resource.slice(1)}`

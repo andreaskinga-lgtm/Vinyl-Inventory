@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { createPasswordVerifier } from "./auth.js";
+
 const DEFAULT_PORT = 8080;
 const DEFAULT_DATA_DIR = "data";
 const DEFAULT_NODE_ENV = "development";
@@ -60,6 +62,13 @@ function readNodeEnvironment(env) {
   return value;
 }
 
+function readAdminCredential(env) {
+  const value = readEnvironmentValue(env, "ADMIN_PASSWORD");
+  return createPasswordVerifier(
+    value === undefined || value === "" ? undefined : value,
+  );
+}
+
 function readDiscogsEnvironment(env) {
   const username = readEnvironmentValue(env, "DISCOGS_USER")?.trim() ?? "";
   const token = readEnvironmentValue(env, "DISCOGS_TOKEN")?.trim() ?? "";
@@ -89,5 +98,6 @@ export function loadConfig({ env = process.env, cwd = process.cwd() } = {}) {
     dataDir: readDataDirectory(env, cwd),
     nodeEnv: readNodeEnvironment(env),
     discogsEnvironment: readDiscogsEnvironment(env),
+    adminCredential: readAdminCredential(env),
   });
 }

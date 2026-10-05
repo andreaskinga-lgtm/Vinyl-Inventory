@@ -70,6 +70,13 @@ describe("legacy migration preflight", () => {
     ["malformed optional credentials", async (sourceDir) => {
       await writeFile(path.join(sourceDir, "discogsConfig.json"), "{");
     }],
+    ["invalid optional site settings", async (sourceDir) => {
+      await writeJson(path.join(sourceDir, "siteSettings.json"), {
+        schemaVersion: 1,
+        visitorDisplay: { idleTimeoutMinutes: 31 },
+        wifi: null,
+      });
+    }],
   ])("refuses %s before mutating the target", async (_name, arrange) => {
     const sourceDir = await createSource();
     const targetDir = await createTemporaryDirectory();
@@ -97,6 +104,29 @@ describe("legacy migration preflight", () => {
     );
     expect(log.mock.calls.flat().join(" ")).not.toContain("private-user");
     expect(log.mock.calls.flat().join(" ")).not.toContain("private-token");
+  });
+
+  it("does not print the Visitor Wi-Fi passphrase during migration", async () => {
+    const sourceDir = await createSource();
+    const targetDir = await createTemporaryDirectory();
+    const log = vi.fn();
+    await writeJson(path.join(sourceDir, "siteSettings.json"), {
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes: 3 },
+      wifi: {
+        security: "wpa",
+        ssid: "Visitors",
+        password: "private-wifi-passphrase",
+        hidden: false,
+      },
+    });
+
+    await migrateLegacyData({ sourceDir, targetDir, owner, log });
+
+    expect(log.mock.calls.flat().join(" ")).toContain("siteSettings.json");
+    expect(log.mock.calls.flat().join(" ")).not.toContain(
+      "private-wifi-passphrase",
+    );
   });
 
   it("preserves validated credential files verbatim", async () => {
@@ -137,6 +167,21 @@ describe("legacy migration transfer", () => {
       username: "older",
       token: "older-secret",
     });
+    await writeJson(path.join(sourceDir, "siteSettings.json"), {
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes: 4 },
+      wifi: {
+        security: "open",
+        ssid: "Visitors",
+        password: "",
+        hidden: false,
+      },
+    });
+    await writeJson(path.join(sourceDir, "siteSettings.json.bak"), {
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes: 3 },
+      wifi: null,
+    });
     await writeFile(path.join(sourceDir, ".DS_Store"), "metadata");
     await writeFile(path.join(sourceDir, "notes.txt"), "unrelated");
     await writeFile(path.join(sourceDir, ".records.json.tmp"), "temporary");
@@ -153,6 +198,8 @@ describe("legacy migration transfer", () => {
       "genreOptions.json",
       "records.json",
       "records.json.bak",
+      "siteSettings.json",
+      "siteSettings.json.bak",
     ]);
     await expect(
       readJson(path.join(targetDir, "records.json.bak")),
@@ -166,6 +213,18 @@ describe("legacy migration transfer", () => {
     expect(
       (await lstat(path.join(targetDir, "records.json"))).isSymbolicLink(),
     ).toBe(false);
+    await expect(
+      readJson(path.join(targetDir, "siteSettings.json")),
+    ).resolves.toEqual({
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes: 4 },
+      wifi: {
+        security: "open",
+        ssid: "Visitors",
+        password: "",
+        hidden: false,
+      },
+    });
   });
 
   it("transfers a recognized optional backup without its primary", async () => {

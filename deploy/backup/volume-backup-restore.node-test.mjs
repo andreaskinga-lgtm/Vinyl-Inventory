@@ -103,7 +103,8 @@ if (args[0] === "inspect") {
       });
     }
   } else if (operation === "validate") {
-    for (const name of ["records.json", "genreOptions.json"]) {
+    for (const name of ["records.json", "genreOptions.json", "siteSettings.json", "siteSettings.json.bak"]) {
+      if (!existsSync(path.join(mounts.get("/data"), name))) continue;
       JSON.parse(readFileSync(path.join(mounts.get("/data"), name), "utf8"));
     }
     result = { status: 0 };
@@ -138,6 +139,8 @@ async function writeFixture(volumeDir, suffix) {
     "genreOptions.json": `{"genres":["Jazz ${suffix}"],"subGenres":[]}\n`,
     "discogsConfig.json": `{"username":"collector","token":"secret-${suffix}"}\n`,
     "records.json.bak": `[{"id":0,"title":"Earlier ${suffix}"}]\n`,
+    "siteSettings.json": `{"schemaVersion":1,"visitorDisplay":{"idleTimeoutMinutes":3},"wifi":{"security":"wpa","ssid":"Visitors","password":"secret-wifi-${suffix}","hidden":false}}\n`,
+    "siteSettings.json.bak": `{"schemaVersion":1,"visitorDisplay":{"idleTimeoutMinutes":2},"wifi":null}\n`,
   };
   await Promise.all(
     Object.entries(files).map(([name, contents]) =>
@@ -163,7 +166,7 @@ afterEach(async () => {
 });
 
 describe("whole-volume backup and restore", () => {
-  it("restores records, genres, credentials, and backups byte-for-byte", async () => {
+  it("restores records, genres, credentials, site settings, and backups byte-for-byte", async () => {
     const harness = await createHarness();
     const original = await writeFixture(harness.volumeDir, "original");
 

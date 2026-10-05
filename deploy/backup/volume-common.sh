@@ -154,6 +154,8 @@ validate_staged_archive() {
         "records.json.bak",
         "genreOptions.json.bak",
         "discogsConfig.json.bak",
+        "siteSettings.json",
+        "siteSettings.json.bak",
       ];
       const read = (name) =>
         JSON.parse(fs.readFileSync(path.join("/data", name), "utf8"));

@@ -147,6 +147,19 @@
   color: var(--color-text);
 }
 
+.record-modal-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.record-modal-error {
+  margin: 0.5rem 0 0;
+  color: #ffb4ab;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 767px) {
   .record-modal {
     max-width: 400px;

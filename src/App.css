@@ -15,6 +15,41 @@
   text-transform: uppercase;
 }
 
+.visitor-reset-countdown {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1050;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgb(232 163 61 / 52%);
+  border-radius: 999px;
+  background-color: rgb(27 25 23 / 95%);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 35%);
+  color: var(--color-accent-hover);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.visitor-settings-error {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  z-index: 1050;
+  max-width: min(34rem, calc(100vw - 2rem));
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgb(214 94 82 / 65%);
+  border-radius: 0.5rem;
+  background-color: rgb(39 24 23 / 95%);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 35%);
+  color: #ffd4ce;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
 .app-header {
   margin-bottom: 1.5rem;
   margin-inline: auto;
@@ -212,81 +247,4 @@
   .collection-count {
     font-size: 0.75rem;
   }
-}
-
-/* Password prompt modal */
-.pw-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.pw-dialog {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  width: min(320px, 90vw);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.pw-dialog p {
-  margin: 0;
-  color: var(--color-text);
-  font-size: 0.95rem;
-}
-
-.pw-input {
-  width: 100%;
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-input);
-  color: var(--color-text);
-  font-size: 1rem;
-  box-sizing: border-box;
-}
-
-.pw-input:focus {
-  outline: 2px solid var(--color-focus);
-  border-color: transparent;
-}
-
-.pw-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.pw-actions button {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-input);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.pw-actions button:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.pw-actions .pw-submit {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-}
-
-.pw-actions .pw-submit:hover {
-  background: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
-  color: #fff;
 }

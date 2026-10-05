@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { once } from "node:events";
 import { afterEach, describe, expect, it } from "vitest";
+import { createAuthService, createPasswordVerifier } from "./auth.js";
 import { createApp } from "./app.js";
 
 const temporaryDirectories = [];
@@ -101,6 +102,9 @@ describe("createApp", () => {
           username: "environment-user",
           token: "secret-token",
         },
+        adminCredential: createPasswordVerifier(
+          "correct horse battery staple",
+        ),
       }),
     });
 
@@ -109,17 +113,70 @@ describe("createApp", () => {
       expect(recordsResponse.status).toBe(200);
       expect(await recordsResponse.json()).toEqual({ records: [] });
 
-      const configResponse = await fetch(`${baseUrl}/api/discogs-config`);
+      const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: "correct horse battery staple" }),
+      });
+      expect(loginResponse.status).toBe(200);
+      const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
+      const configResponse = await fetch(`${baseUrl}/api/discogs-config`, {
+        headers: { Cookie: cookie },
+      });
       expect(configResponse.status).toBe(200);
-      expect(await configResponse.json()).toEqual({
-        username: "environment-user",
+      const configBody = await configResponse.json();
+      expect(configBody).toEqual({
+        username: "",
         hasToken: true,
         source: "environment",
         canEdit: false,
       });
+      expect(JSON.stringify(configBody)).not.toContain("environment-user");
       expect(
         await readFile(path.join(dataDirectory, "records.json"), "utf8"),
       ).toContain("[]");
+    });
+  });
+
+  it("uses one injected authentication service for login and protected API requests", async () => {
+    const directory = await createTemporaryDirectory();
+    const distDirectory = await createDistDirectory(directory);
+    const auth = createAuthService({
+      credential: createPasswordVerifier("correct horse battery staple"),
+      randomBytes: () => Buffer.from("app-session-randomness"),
+    });
+    const app = createApp({
+      auth,
+      config: createConfig(path.join(directory, "data"), distDirectory),
+    });
+
+    await withServer(app, async (baseUrl) => {
+      const unauthenticatedResponse = await fetch(`${baseUrl}/api/records`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ records: [] }),
+      });
+      expect(unauthenticatedResponse.status).toBe(401);
+
+      const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: "correct horse battery staple" }),
+      });
+      expect(loginResponse.status).toBe(200);
+      const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
+
+      const authenticatedResponse = await fetch(`${baseUrl}/api/records`, {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          "Content-Type": "application/json",
+          Origin: baseUrl,
+        },
+        body: JSON.stringify({ records: [] }),
+      });
+      expect(authenticatedResponse.status).toBe(200);
+      expect(await authenticatedResponse.json()).toEqual({ ok: true });
     });
   });
 

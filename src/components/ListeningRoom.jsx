@@ -440,12 +440,15 @@ function FlipView({ records, onExit }) {
 function ListeningRoom({
   records,
   editMode,
+  authenticated,
   onEditRecord,
   onRequestEditMode,
   onLockEditMode,
   onRequestAddRecord,
-  onShare,
   onSync,
+  onHome,
+  onSettings,
+  onSignOut,
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("artist-asc");
@@ -572,21 +575,29 @@ function ListeningRoom({
           <div className="c-panel c-panel--list">
             <button
               type="button"
+              onClick={() => {
+                setDockPanel(null);
+                onHome();
+              }}
+            >
+              Home Screen
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDockPanel(null);
+                onSettings();
+              }}
+            >
+              Settings
+            </button>
+            <button
+              type="button"
               className="c-mobile-layout-toggle"
               aria-pressed={mobileColumns === 3}
               onClick={() => setMobileColumns((columns) => (columns === 2 ? 3 : 2))}
             >
               Show {mobileColumns === 2 ? "3" : "2"} columns
-            </button>
-            <button
-              type="button"
-              aria-haspopup="dialog"
-              onClick={() => {
-                setDockPanel(null);
-                onShare();
-              }}
-            >
-              Share collection
             </button>
             <button
               type="button"
@@ -596,7 +607,7 @@ function ListeningRoom({
                 else onRequestEditMode();
               }}
             >
-              {editMode ? "Lock edit mode" : "Edit mode"}
+              {editMode ? "View mode" : "Edit mode"}
             </button>
             {editMode && (
               <button
@@ -620,6 +631,17 @@ function ListeningRoom({
                 }}
               >
                 Sync with Discogs
+              </button>
+            )}
+            {authenticated && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDockPanel(null);
+                  onSignOut();
+                }}
+              >
+                Sign out
               </button>
             )}
           </div>

@@ -49,12 +49,21 @@ The Home Screen has two primary actions:
 1. **Browse on this device** - opens the existing collection UI in Collection Display mode.
 2. **Open on my phone** - starts the phone handoff.
 
+Use the validated image-first Collection Display direction grounded in the existing collection browser:
+near-black background, restrained amber accent, the existing typography and vinyl/album-art
+language, compact uppercase labels, hairline panels, and floating pill controls. **Browse on this
+device** is the dominant amber action; **Open on my phone** is the secondary dark action. Do not
+introduce Settings, authentication, or administrator language on this visitor surface.
+
 Settings is not linked from the Home Screen. An administrator reaches it by selecting **Browse
 on this device** and using the existing three-dot menu.
 
 Collection Display mode is ephemeral state associated with `/`, not a direct `/browse`
 navigation. Browser Back and refresh return to the Home Screen. A visitor who loads `/browse`
 directly is in ordinary phone browsing and is not subject to Collection Display reset behavior.
+Entering Collection Display mode immediately replaces the Home Screen with the existing
+collection UI at the top of the document; it must not append the collection below Home or retain
+a prior page scroll position.
 
 ### Phone handoff
 
@@ -67,11 +76,23 @@ When a Visitor Wi-Fi Network is configured:
 5. **I'm connected - continue** advances to the collection QR.
 6. The collection QR encodes `window.location.origin + "/browse"`.
 
+Render the connection question and every later handoff step in a fixed, centered modal over a
+dimmed/blurred Home Screen. Opening the handoff, starting over, and entering Collection Display
+mode reset document scroll to the top. The page behind the modal does not scroll; when a narrow
+viewport cannot fit a step, scroll the modal content itself.
+
 Every step after the Home Screen has **Start over**. The handoff is visitor-operated; wording
 must not assume a host is tapping controls for someone else.
 
 When Wi-Fi is not configured, **Open on my phone** immediately shows the collection QR. Visitors
 never see configuration warnings, setup hints, or Settings links.
+
+Use production dialog semantics with an accessible title, initial focus, focus containment and
+restoration, Escape support, and visible keyboard focus. Controls are at least 44 by 44 CSS
+pixels, with primary visitor actions at least 52 pixels high. Target 280 CSS pixels for each QR
+code with a white quiet zone; scale to available width but not below 220 pixels in supported
+narrow-phone layouts. Passwords remain masked by default. Revealing the password enables copying,
+and copy feedback explicitly reports success or unavailability.
 
 The Collection Display must itself be opened through a LAN-reachable IP address or hostname.
 Opening it through `localhost` would create a phone-unreachable collection QR and is an operator
@@ -291,6 +312,15 @@ returns to the originating view.
 
 Settings is a general page shell with three sections:
 
+Use the validated Variant A structure: a persistent section index on tablet/desktop and three
+top tabs on narrow screens, with only the selected section's editor visible. The index shows
+each section's clean, dirty, saving, success, validation-error, or server-error state. The
+focused editor repeats that state beside **Discard** and a plain **Save** button; there is no
+page-wide Save.
+
+Keep the shell concise. Show one **Settings** title. Do not add an internal layout label, section
+numbers, or explanatory copy stating that sections save independently.
+
 ### Visitor display
 
 - whole-minute idle timeout;
@@ -309,6 +339,10 @@ Settings is a general page shell with three sections:
 
 Switching to open security clears/disables the password before save. Validation errors remain
 next to their fields. Successful and failed saves are explicit.
+
+Place Wi-Fi removal at the bottom of the section, separated from ordinary fields. Its
+confirmation explains that visitor phone handoff will skip Wi-Fi and continue to the collection
+QR.
 
 ### Discogs
 
@@ -334,6 +368,11 @@ Environment-managed credentials show read-only source/status without returning e
 Sync with Discogs shows readiness and links to `/settings#discogs` when configuration is missing,
 then allows the administrator to return to Sync.
 
+Lead the Discogs section with its credential source/status. Saved credentials indicate that a
+token is on file and that a blank token keeps it unchanged. Environment-managed credentials
+replace the editor with read-only readiness. Place saved-credential removal at the bottom of the
+section, separated from Save, and confirm that Sync becomes unavailable.
+
 Add `DELETE /api/discogs-config`. Update `POST /api/discogs-config` so an authenticated request
 may preserve the saved token when the token field is blank and an existing saved credential is
 present. Environment-managed credentials continue to reject mutations with `409`.
@@ -343,6 +382,11 @@ present. Environment-managed credentials continue to reject mutations with `409`
 Each section saves independently. The page tracks dirty state per section. **Cancel**, in-app
 navigation, browser Back, refresh, and close must warn before discarding any dirty section.
 After all changes are saved or discarded, return to the view that opened Settings.
+
+The initial challenge says **Sign in to open Settings**. A save rejected because the Admin
+Session expired says **Sign in again to finish saving**, retains the exact section draft/action,
+and resumes it after authentication. The in-app dirty warning names affected sections and offers
+**Keep editing** or **Discard and leave**.
 
 ### Client transition model
 

@@ -28,6 +28,7 @@ COPY --chown=node:node --from=production-deps /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
 COPY --chown=node:node --from=build /app/server ./server
 COPY --chown=node:node --from=build /app/src/data/genreOptions.js ./src/data/genreOptions.js
+COPY --chown=node:node --from=build /app/src/utils/wifiPayload.js ./src/utils/wifiPayload.js
 COPY --chown=node:node --from=build /app/package.json ./package.json
 COPY --chown=node:node --from=build /app/package-lock.json ./package-lock.json
 

@@ -1,9 +1,11 @@
 # Volume backup and restore
 
 Run these commands from the directory containing `compose.yaml`. Each archive contains the
-entire `vinyl-inventory-data` volume, potentially including `discogsConfig.json`. **Treat every
-archive as a secret:** keep its permissions restricted, retain multiple dated copies, and copy
-them off the Pi and its SD card.
+entire `vinyl-inventory-data` volume, potentially including `discogsConfig.json` and
+`siteSettings.json`. A configured `siteSettings.json` contains the Visitor Wi-Fi SSID and
+passphrase used to generate the public handoff QR code. **Treat every archive as a secret:**
+keep its permissions restricted, retain multiple dated copies, and copy them to encrypted
+off-Pi storage rather than an unencrypted share.
 
 ## Back up
 
@@ -22,7 +24,8 @@ storage. Decide and perform retention explicitly; the script never deletes an ar
 ## Restore
 
 First record the current collection count so it can be compared with the selected archive after
-restore:
+restore. The restore also brings back the Visitor Display timeout, Wi-Fi handoff settings, and
+saved Discogs credentials from the selected whole-volume archive:
 
 ```sh
 curl --fail --silent --show-error http://localhost/api/records |

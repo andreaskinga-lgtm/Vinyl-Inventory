@@ -9,6 +9,8 @@ function EditRecordModal({
   onSave,
   onDelete = null,
   onClose,
+  error = null,
+  writeBlocked = false,
   readOnly = false,
   genres = [],
   subGenres: subGenreOptions = [],
@@ -58,6 +60,9 @@ function EditRecordModal({
   const [formData, setFormData] = useState(() => getInitialFormData(record));
   const [showCoverPicker, setShowCoverPicker] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState(null);
+  const [optionError, setOptionError] = useState(null);
 
   const [initialFormJson] = useState(() =>
     JSON.stringify(normalizeFormData(getInitialFormData(record))),
@@ -84,20 +89,41 @@ function EditRecordModal({
     setFormData((prev) => ({ ...prev, [name]: value }));
   }
 
-  function handleSubmit(e) {
+  function messageFor(errorValue) {
+    return errorValue instanceof Error && errorValue.message
+      ? errorValue.message
+      : "Unable to save the record.";
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!formData.artist.trim() || !formData.title.trim()) return;
-    onSave(record.id, {
-      artist: formData.artist.trim(),
-      title: formData.title.trim(),
-      year: formData.year ? parseInt(formData.year, 10) : null,
-      genre: formData.genre.trim(),
-      subGenres: formData.subGenres,
-      location: formData.location.trim(),
-      coverUrl: formData.coverUrl.trim(),
-      vinylUrl: formData.vinylUrl.trim(),
-      vinylUrl2: formData.vinylUrl2.trim(),
-    });
+    if (
+      saving ||
+      writeBlocked ||
+      !formData.artist.trim() ||
+      !formData.title.trim()
+    ) {
+      return;
+    }
+    setSaving(true);
+    setFormError(null);
+    try {
+      await onSave(record.id, {
+        artist: formData.artist.trim(),
+        title: formData.title.trim(),
+        year: formData.year ? parseInt(formData.year, 10) : null,
+        genre: formData.genre.trim(),
+        subGenres: formData.subGenres,
+        location: formData.location.trim(),
+        coverUrl: formData.coverUrl.trim(),
+        vinylUrl: formData.vinylUrl.trim(),
+        vinylUrl2: formData.vinylUrl2.trim(),
+      });
+    } catch (errorValue) {
+      setFormError(messageFor(errorValue));
+    } finally {
+      setSaving(false);
+    }
   }
 
   const canDelete = !readOnly && typeof onDelete === "function";
@@ -107,13 +133,60 @@ function EditRecordModal({
     return current !== initialFormJson;
   }, [formData, initialFormJson]);
 
-  function handleDeleteClick() {
-    if (!canDelete) return;
+  async function handleDeleteClick() {
+    if (!canDelete || saving || writeBlocked) return;
     const label = `${record.artist || "Unknown Artist"} — ${record.title || "Untitled"}`;
     const ok = confirm(`Delete this record?\n\n${label}`);
     if (!ok) return;
-    onDelete(record.id);
+    setSaving(true);
+    setFormError(null);
+    try {
+      await onDelete(record.id);
+      onClose();
+    } catch (errorValue) {
+      setFormError(messageFor(errorValue));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleEditClose() {
+    if (saving || writeBlocked) return;
     onClose();
+  }
+
+  async function handleAddGenre(name) {
+    setOptionError(null);
+    try {
+      await onAddGenre(name);
+      setFormData((prev) => ({ ...prev, genre: name }));
+    } catch (errorValue) {
+      if (errorValue?.status === 401) return false;
+      setOptionError(messageFor(errorValue));
+      return false;
+    }
+  }
+
+  async function handleAddSubGenre(name) {
+    setOptionError(null);
+    try {
+      await onAddSubGenre(name);
+      return true;
+    } catch (errorValue) {
+      if (errorValue?.status === 401) return false;
+      setOptionError(messageFor(errorValue));
+      return false;
+    }
+  }
+
+  async function handleDeleteSubGenre(name) {
+    setOptionError(null);
+    try {
+      await onDeleteSubGenre(name);
+    } catch (errorValue) {
+      if (errorValue?.status === 401) return;
+      setOptionError(messageFor(errorValue));
+    }
   }
 
   if (showCoverPicker) {
@@ -139,7 +212,12 @@ function EditRecordModal({
         >
           <div className="record-modal-header">
             <h3>Record Details</h3>
-            <button className="record-modal-close" onClick={onClose}>
+            <button
+              type="button"
+              className="record-modal-close"
+              onClick={onClose}
+              disabled={saving}
+            >
               ✕
             </button>
           </div>
@@ -295,7 +373,7 @@ function EditRecordModal({
   }
 
   return (
-    <div className="record-modal-overlay" onClick={onClose}>
+    <div className="record-modal-overlay" onClick={handleEditClose}>
       <div className="record-modal" onClick={(e) => e.stopPropagation()}>
         <div className="record-modal-header">
           <h3>Edit Record</h3>
@@ -303,7 +381,8 @@ function EditRecordModal({
             <button
               type="button"
               className="record-modal-close"
-              onClick={onClose}
+              onClick={handleEditClose}
+              disabled={saving}
             >
               ✕
             </button>
@@ -327,6 +406,7 @@ function EditRecordModal({
               type="button"
               className="edit-modal-cover-btn"
               onClick={() => setShowCoverPicker(true)}
+              disabled={saving || writeBlocked}
             >
               {formData.coverUrl
                 ? "Change Cover Artwork"
@@ -344,6 +424,7 @@ function EditRecordModal({
         </div>
 
         <form className="record-modal-form" onSubmit={handleSubmit}>
+          <fieldset disabled={saving || writeBlocked}>
           <label>
             Artist *
             <input
@@ -386,8 +467,7 @@ function EditRecordModal({
                   if (e.target.value === "__add_new__") {
                     const name = prompt("Enter new genre:");
                     if (name?.trim()) {
-                      onAddGenre(name.trim());
-                      setFormData((prev) => ({ ...prev, genre: name.trim() }));
+                      void handleAddGenre(name.trim());
                     }
                   } else {
                     handleChange(e);
@@ -412,10 +492,15 @@ function EditRecordModal({
               onChange={(selected) =>
                 setFormData((prev) => ({ ...prev, subGenres: selected }))
               }
-              onAddNew={onAddSubGenre}
-              onDeleteOption={onDeleteSubGenre}
+              onAddNew={handleAddSubGenre}
+              onDeleteOption={handleDeleteSubGenre}
             />
           </div>
+          {(error || formError || optionError) && (
+            <p className="record-modal-error" role="alert">
+              {error || formError || optionError}
+            </p>
+          )}
           <label>
             Location
             <input
@@ -457,21 +542,29 @@ function EditRecordModal({
             />
           </label>
           <div className="record-modal-actions">
-            <button type="submit">Save</button>
+            <button type="submit" disabled={saving || writeBlocked}>
+              {saving ? "Saving…" : "Save"}
+            </button>
             {canDelete && !isDirty ? (
               <button
                 type="button"
                 className="edit-modal-delete"
-                onClick={handleDeleteClick}
+                onClick={() => void handleDeleteClick()}
+                disabled={saving || writeBlocked}
               >
-                Delete
+                {saving ? "Saving…" : "Delete"}
               </button>
             ) : (
-              <button type="button" className="cancel-btn" onClick={onClose}>
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={handleEditClose}
+              >
                 Cancel
               </button>
             )}
           </div>
+          </fieldset>
         </form>
       </div>
     </div>

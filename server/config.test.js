@@ -31,6 +31,51 @@ describe("loadConfig defaults and paths", () => {
 
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.discogsEnvironment)).toBe(true);
+    expect(Object.isFrozen(config.adminCredential)).toBe(true);
+  });
+});
+
+describe("loadConfig administrator credential", () => {
+  it("leaves administrator access unconfigured when ADMIN_PASSWORD is absent", () => {
+    const config = loadConfig({ env: {}, cwd: "/srv/vinyl-inventory" });
+
+    expect(config.adminCredential.configured).toBe(false);
+    expect(config.adminCredential.verify("any submitted password")).toBe(
+      false,
+    );
+  });
+
+  it("treats an empty ADMIN_PASSWORD as unconfigured", () => {
+    const config = loadConfig({
+      env: { ADMIN_PASSWORD: "" },
+      cwd: "/srv/vinyl-inventory",
+    });
+
+    expect(config.adminCredential.configured).toBe(false);
+  });
+
+  it("keeps the exact configured password behind a verifier boundary", () => {
+    const password = "  ten-character-password  ";
+    const config = loadConfig({
+      env: { ADMIN_PASSWORD: password },
+      cwd: "/srv/vinyl-inventory",
+    });
+
+    expect(config.adminCredential.configured).toBe(true);
+    expect(config.adminCredential.verify(password)).toBe(true);
+    expect(config.adminCredential.verify(password.trim())).toBe(false);
+    expect(JSON.stringify(config)).not.toContain(password);
+  });
+
+  it("rejects configured administrator passwords shorter than ten characters", () => {
+    expect(() =>
+      loadConfig({
+        env: { ADMIN_PASSWORD: "123456789" },
+        cwd: "/srv/vinyl-inventory",
+      }),
+    ).toThrow(
+      "Invalid ADMIN_PASSWORD: expected at least 10 characters",
+    );
   });
 });
 

@@ -1,6 +1,5 @@
-Status: ready-for-agent
+Status: resolved
 Kind: implementation
-Blocked by: 05, 08
 
 # Make collection writes server-first and recover from expired sessions
 
@@ -42,3 +41,23 @@ Read **Reliable authenticated writes** in
   Edit Mode was the initiating intent.
 - Existing successful editing/import behavior remains intact.
 - Targeted tests, `npm run lint`, and `npm run build` pass.
+
+## Comments
+
+Implemented server-first collection and genre-option writes end-to-end.
+
+- Removed the initialized-ref records auto-save effect.
+- Added pure collection write planning helpers and transition coverage for exact
+  resumable records and genre-option payloads.
+- Records add/edit/delete/import and genre-option changes now await authorized
+  server success before committing App state.
+- Added duplicate-save guards and visible failure states while retaining form
+  input.
+- Centralized protected-request 401 handling; expired sessions clear Admin
+  Session/Edit Mode, preserve tagged payloads, and resume only after login.
+- Discogs import keeps its review state on failed writes.
+- Fixed Collection Display timer activity from resetting controlled modal inputs.
+
+Validation completed: focused Vitest tests, full `npm test`, `npm run lint`,
+`npm run build`, `git diff --check`, and manual Playwright checks for Home/auth,
+server-first add and genre writes, and expired-write challenge/resumption.
