@@ -62,7 +62,7 @@ mkdir vinyl-inventory && cd vinyl-inventory
 Download the pinned release file:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/andreaskinga-lgtm/Vinyl-Inventory/v1.2.0/compose.yaml
+curl -fsSLO https://raw.githubusercontent.com/andreaskinga-lgtm/Vinyl-Inventory/v2.0.0/compose.yaml
 ```
 
 Before starting, create a mode-0600 `.env` with a unique administrator password of at least
@@ -130,7 +130,7 @@ See [`docs/deployment.md`](docs/deployment.md) for password/restart details, add
 tablet setup, backup and secret handling, migration, updates, systemd, Pi notes, PWA behavior,
 and troubleshooting.
 
-> **Release availability:** the Compose file is pinned to `v1.2.0`. Before relying on the public
+> **Release availability:** the Compose file is pinned to `v2.0.0`. Before relying on the public
 > download and image pull, a maintainer must make the GHCR package public and verify an
 > unauthenticated arm64 pull from a clean machine. Until then, use a maintainer-provided image
 > candidate rather than assuming the public image is available.
