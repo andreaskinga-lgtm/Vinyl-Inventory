@@ -25,8 +25,9 @@ Read **Reliable authenticated writes** in
 3. Disable duplicate submissions and show saving/failure state through existing form surfaces.
 4. Centralize protected fetch handling so `401` clears the browser's last-known Admin Session
    state and Edit Mode; do not use a client timer to predict server expiry.
-5. Preserve pending form values and the exact intended payload as a tagged pending action where
-   practical.
+5. Every action offered for automatic resumption must retain its exact intended payload as a
+   tagged pending action. For unsupported actions, retain form values but require explicit
+   resubmission instead of claiming the original action resumed.
 6. Re-open sign-in with a session-expired explanation and resume only that tagged action after
    successful authentication.
 7. Never silently retry a non-idempotent write without the captured intended payload.
