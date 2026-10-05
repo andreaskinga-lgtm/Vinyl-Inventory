@@ -1,4 +1,4 @@
-Status: ready-for-human
+Status: resolved
 Kind: prototype
 Blocked by:
 
@@ -56,7 +56,21 @@ Illegal transitions must be visible rather than silently accepted.
 
 ## Comments
 
-- Prototype ready for human review in `src/HomeScreenState.prototype.html`.
-- Primary-source branch: `prototype/home-screen-visitor-state-model` at commit `2bb8a55`.
-- No verdict or production transition-rule changes have been selected yet. Record those here only
-  after review.
+- **Verdict:** The proposed model holds under all ten required walkthroughs plus direct
+  `/settings` entry/cancel coverage when navigation context, display timing, browser-known
+  authentication, Edit Mode, pending intent, and Settings dirtiness remain separate state axes.
+  Illegal transitions remain visible, including display countdown and timeout attempts from
+  direct `/browse`.
+- **Changed transition rules:** Display timeout is explicitly the same safe public reset as
+  selecting **Home Screen**: return to `/`, exit Edit Mode, end the Admin Session, and clear
+  transient visitor and administrator intent. Server session expiry is not predicted by the
+  browser; it retains its last-known signed-in state until a protected request returns `401`,
+  then preserves the exact pending draft payload/action for re-authentication.
+- **Implementation shape:** Use one pure transition function over lifted App state with
+  orthogonal navigation, visitor-display, administrator, and Settings slices. Represent
+  authentication resumption as a tagged pending intent rather than coupled booleans.
+- **Primary source:** `prototype/home-screen-visitor-state-model` at commit `2bb8a55`
+  (`src/HomeScreenState.prototype.html`). The HTML shell was removed from the implementation
+  branch after these decisions were folded into the spec and downstream tickets.
+- **Review:** The final Spec review reported no findings. The Standards review's free-play
+  apostrophe bug was fixed and verified before the primary-source branch was finalized.

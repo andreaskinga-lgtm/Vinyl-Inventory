@@ -22,18 +22,21 @@ Read **Visitor navigation**, **Collection menu**, and **Settings page** in
 
 1. Add a small History API view layer for `/`, `/browse`, and `/settings`, including `popstate`
    handling and direct-load normalization.
-2. Load authenticated state from `/api/auth/session`; keep Admin Session state separate from Edit
-   Mode.
-3. Replace the hardcoded client password prompt with the server sign-in flow.
-4. Preserve initiating intent: generic sign-in stays in View Mode, Edit mode resumes editing, and
-   Settings resumes `/settings`.
-5. Update the collection menu to show **Home Screen**, Edit/View mode, Settings, and Sign out
+2. Drive lifted navigation, visitor-display, administrator, and Settings state through one pure
+   transition function (or equivalent centralized pure transition layer) so path/context,
+   authentication, Edit Mode, pending intent, and dirty state cannot drift independently.
+3. Load authenticated state from `/api/auth/session`; keep the browser's last-known Admin Session
+   state separate from Edit Mode and from server-authoritative expiry.
+4. Replace the hardcoded client password prompt with the server sign-in flow.
+5. Preserve initiating intent as a tagged pending action: generic sign-in stays in View Mode, Edit
+   mode resumes editing, and Settings resumes `/settings`.
+6. Update the collection menu to show **Home Screen**, Edit/View mode, Settings, and Sign out
    according to the spec.
-6. Build Settings sections for Visitor Display, Wi-Fi, and Discogs with independent Save actions,
+7. Build Settings sections for Visitor Display, Wi-Fi, and Discogs with independent Save actions,
    validation/error/success states, and per-section dirty tracking.
-7. Implement Settings cancel/origin return and dirty navigation warnings for in-app navigation,
+8. Implement Settings cancel/origin return and dirty navigation warnings for in-app navigation,
    Back, refresh, and close.
-8. Keep the Wi-Fi password prefilled but masked; provide reveal, security-dependent fields, and
+9. Keep the Wi-Fi password prefilled but masked; provide reveal, security-dependent fields, and
    confirmed removal.
 
 ## Completion criteria

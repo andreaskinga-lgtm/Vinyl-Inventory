@@ -29,15 +29,16 @@ Read **Home Screen**, **Phone handoff**, and **Display reset** in
    over according to the state machine.
 7. Apply the configured idle timeout to Home handoff steps and Collection Display browsing only.
 8. Reset on broad visitor activity and show the final 10-second countdown.
-9. Ensure **Home Screen** exits Edit Mode, signs out, clears transient dialogs/state, and returns
-   to `/`.
+9. On timeout expiry, perform the same safe public reset as **Home Screen**: exit Edit Mode, sign
+   out, clear transient dialogs and pending administrator intent, and return to `/`.
+10. Ensure selecting **Home Screen** performs that safe public reset immediately.
 
 ## Completion criteria
 
 - QR-only behavior works when Wi-Fi is absent, with no visitor-visible setup hint.
 - Representative iOS and Android devices can scan WPA/open/hidden Wi-Fi payloads and `/browse`.
 - Collection Display browsing resets after the configured timeout; direct phone browsing does
-  not.
+  not and cannot dispatch a timeout transition that navigates Home.
 - Home, Back, refresh, Start over, copy/reveal, and safe sign-out behavior are manually verified.
 - The Home Screen is usable at tablet dimensions and remains accessible by keyboard/screen reader.
 - `npm run lint` and `npm run build` pass.
