@@ -1,4 +1,4 @@
-Status: resolved
+Status: ready-for-human
 Kind: prototype
 Blocked by:
 
@@ -56,23 +56,7 @@ Illegal transitions must be visible rather than silently accepted.
 
 ## Comments
 
-- **Verdict:** The proposed model holds under all ten required walkthroughs plus a direct
-  `/settings` entry/cancel walkthrough when navigation context, display timing, browser-known
-  authentication, Edit Mode, pending intent, and Settings dirtiness remain separate state axes.
-  The standalone artifact also makes illegal transitions visible, including both display
-  countdown and timeout attempts from direct `/browse`.
-- **Changed transition rules:** Display timeout is now explicitly the same safe public reset as
-  selecting **Home Screen**: it returns to `/`, exits Edit Mode, ends the Admin Session, and clears
-  transient visitor and administrator intent. Server session expiry is not predicted by the
-  browser; the browser retains its last-known signed-in state until a protected request returns
-  `401`, then preserves the exact pending draft payload/action for re-authentication.
-- **Implementation shape:** Use one pure transition function over lifted App state with
-  orthogonal navigation, visitor-display, administrator, and Settings slices. Represent
-  authentication resumption as a tagged pending intent rather than coupled booleans.
-- **Primary source:** `prototype/home-screen-visitor-state-model` at reviewed commit `032409d`
-  (`src/HomeScreenState.prototype.html`). The HTML shell was removed from the implementation
-  branch after these decisions were folded into the spec and downstream tickets.
-- **Review:** The Standards review reported only a metadata concern that does not apply here:
-  `Type:` is required by the issue-tracker guide for wayfinder tickets, while this feature's
-  regular tickets consistently use `Kind:`. The Spec review's direct `/settings`, hidden session
-  expiry, and exact retained-payload findings were fixed in `032409d`.
+- Prototype ready for human review in `src/HomeScreenState.prototype.html`.
+- Primary-source branch: `prototype/home-screen-visitor-state-model` at commit `032409d`.
+- No verdict or production transition-rule changes have been selected yet. Record those here only
+  after review.

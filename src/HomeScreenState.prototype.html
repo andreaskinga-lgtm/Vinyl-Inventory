@@ -1,0 +1,1935 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PROTOTYPE: Home Screen state model</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color: #221a16;
+        background-color: #f6f1e8;
+        --ink: #221a16;
+        --muted: #685d54;
+        --paper: #fffdf8;
+        --line: #d8cdc0;
+        --accent: #8a3d2f;
+        --accent-soft: #f1ddd7;
+        --good: #2f6b4f;
+        --good-soft: #dcece3;
+        --bad: #9a302a;
+        --bad-soft: #f7deda;
+        --shadow: 0 16px 40px rgba(60, 44, 34, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background-color: #f6f1e8;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      button:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid #c46f5e;
+        outline-offset: 3px;
+      }
+
+      .page {
+        width: min(1440px, 100%);
+        margin: 0 auto;
+        padding: 32px clamp(16px, 4vw, 56px) 64px;
+      }
+
+      .prototype-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding: 6px 10px;
+        border: 1px solid var(--accent);
+        border-radius: 999px;
+        color: var(--accent);
+        background-color: var(--paper);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 900px;
+        margin-bottom: 12px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2rem, 5vw, 4.5rem);
+        font-weight: 500;
+        line-height: 0.98;
+        letter-spacing: -0.045em;
+      }
+
+      .intro {
+        max-width: 920px;
+        margin-bottom: 28px;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.65;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .stack {
+        display: grid;
+        gap: 24px;
+      }
+
+      .panel {
+        padding: clamp(18px, 3vw, 28px);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background-color: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .panel-header h2 {
+        margin-bottom: 4px;
+        font-size: 1.25rem;
+      }
+
+      .panel-header p {
+        margin-bottom: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .transition-banner {
+        margin-bottom: 18px;
+        padding: 14px 16px;
+        border: 1px solid;
+        border-radius: 12px;
+        line-height: 1.45;
+      }
+
+      .transition-banner.accepted {
+        border-color: #99baa8;
+        background-color: var(--good-soft);
+        color: #204b38;
+      }
+
+      .transition-banner.rejected {
+        border-color: #d59a92;
+        background-color: var(--bad-soft);
+        color: #72221e;
+      }
+
+      .transition-banner strong {
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .state-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .state-card {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background-color: #faf6ef;
+      }
+
+      .state-card h3 {
+        margin-bottom: 12px;
+        color: var(--accent);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .state-card dl {
+        display: grid;
+        grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.2fr);
+        gap: 8px 12px;
+        margin: 0;
+      }
+
+      .state-card dt {
+        color: var(--muted);
+      }
+
+      .state-card dd {
+        min-width: 0;
+        margin: 0;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      details {
+        margin-top: 16px;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      summary {
+        cursor: pointer;
+        color: var(--accent);
+        font-weight: 750;
+      }
+
+      pre {
+        max-height: 420px;
+        overflow: auto;
+        margin: 14px 0 0;
+        padding: 14px;
+        border-radius: 10px;
+        background-color: #241e1a;
+        color: #f8eee5;
+        font: 0.78rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+
+      .button-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .action-button,
+      .tab-button,
+      .walkthrough-button {
+        min-height: 44px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: var(--ink);
+        background-color: #fff;
+        cursor: pointer;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .action-button {
+        padding: 10px 12px;
+        text-align: left;
+      }
+
+      .action-button:hover,
+      .walkthrough-button:hover:not(:disabled) {
+        border-color: var(--accent);
+        background-color: var(--accent-soft);
+      }
+
+      .action-button.setup {
+        border-style: dashed;
+        color: var(--accent);
+      }
+
+      .action-button.danger {
+        color: var(--bad);
+      }
+
+      .action-group + .action-group {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .action-group h3 {
+        margin-bottom: 10px;
+        font-size: 0.92rem;
+      }
+
+      .tab-list {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        margin: 0 -4px 18px;
+        padding: 4px;
+      }
+
+      .tab-button {
+        flex: 0 0 auto;
+        min-width: 42px;
+        padding: 9px 12px;
+      }
+
+      .tab-button[aria-selected="true"] {
+        border-color: var(--accent);
+        color: #fff;
+        background-color: var(--accent);
+      }
+
+      .scenario-heading {
+        margin-bottom: 6px;
+        font-size: 1.08rem;
+      }
+
+      .scenario-copy {
+        margin-bottom: 16px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .walkthrough-actions {
+        display: grid;
+        gap: 10px;
+      }
+
+      .walkthrough-step {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+      }
+
+      .step-number {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border-radius: 50%;
+        color: var(--muted);
+        background-color: #eee5d9;
+        font-weight: 800;
+      }
+
+      .walkthrough-step.done .step-number {
+        color: #fff;
+        background-color: var(--good);
+      }
+
+      .walkthrough-step.current .step-number {
+        color: #fff;
+        background-color: var(--accent);
+      }
+
+      .walkthrough-button {
+        width: 100%;
+        padding: 11px 13px;
+        text-align: left;
+      }
+
+      .walkthrough-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.48;
+      }
+
+      .restart-button {
+        margin-top: 16px;
+        padding: 8px 12px;
+        border: 0;
+        color: var(--accent);
+        background-color: transparent;
+        cursor: pointer;
+        font-weight: 800;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      .history-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .history-item {
+        padding: 10px 12px;
+        border-left: 4px solid var(--good);
+        background-color: #f4efe7;
+        line-height: 1.4;
+      }
+
+      .history-item.rejected {
+        border-left-color: var(--bad);
+      }
+
+      .history-item strong {
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .page {
+          padding-top: 20px;
+        }
+
+        .state-grid,
+        .button-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .state-card dl {
+          grid-template-columns: 1fr;
+          gap: 2px;
+        }
+
+        .state-card dd + dt {
+          margin-top: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="prototype-label">Throwaway logic prototype</div>
+      <h1>Can the visitor and administrator states stay separate?</h1>
+      <p class="intro">
+        This demo tests whether Home Screen handoff, Collection Display browsing, direct phone
+        browsing, Admin Session, Edit Mode, Settings intent, display timeout, dirty input, and
+        session expiry remain distinct under awkward action sequences. Use a guided walkthrough or
+        press any free-play action in any order. Rejected actions are shown in red instead of being
+        silently ignored.
+      </p>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel" aria-labelledby="state-heading">
+            <div class="panel-header">
+              <div>
+                <h2 id="state-heading">Complete current state</h2>
+                <p>Every accepted or rejected action re-renders this state.</p>
+              </div>
+            </div>
+            <div id="transition-banner" class="transition-banner accepted" aria-live="polite"></div>
+            <div id="state-grid" class="state-grid"></div>
+            <details>
+              <summary>Show the exact state object</summary>
+              <pre id="state-json"></pre>
+            </details>
+          </section>
+
+          <section class="panel" aria-labelledby="walkthrough-heading">
+            <div class="panel-header">
+              <div>
+                <h2 id="walkthrough-heading">Guided walkthroughs</h2>
+                <p>Choose a numbered tab, then press its steps from top to bottom.</p>
+              </div>
+            </div>
+            <div id="scenario-tabs" class="tab-list" role="tablist" aria-label="Scenarios"></div>
+            <div id="scenario-panel" role="tabpanel"></div>
+          </section>
+        </div>
+
+        <aside class="stack">
+          <section class="panel" aria-labelledby="free-play-heading">
+            <div class="panel-header">
+              <div>
+                <h2 id="free-play-heading">Free play</h2>
+                <p>All actions stay available so illegal transitions can be tested.</p>
+              </div>
+            </div>
+            <div id="free-play"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="history-heading">
+            <div class="panel-header">
+              <div>
+                <h2 id="history-heading">Transition history</h2>
+                <p>The newest transition appears first.</p>
+              </div>
+            </div>
+            <ol id="history" class="history-list"></ol>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const HomeScreenStateModel = (() => {
+        const HOME = {
+          path: "/",
+          view: "Home Screen",
+          browseContext: null,
+          settingsOrigin: null,
+        };
+
+        function createInitialState(options = {}) {
+          const wifiConfigured = options.wifiConfigured ?? true;
+          return {
+            navigation: { ...HOME },
+            visitor: {
+              wifiConfigured,
+              handoffStep: null,
+              displayTimer: "inactive",
+              openVisitorDialogs: [],
+            },
+            admin: {
+              serverSession: "none",
+              clientBelievesAuthenticated: false,
+              editMode: false,
+              challenge: null,
+              pendingIntent: null,
+            },
+            settings: {
+              dirtySections: [],
+              drafts: {},
+              lastSaved: null,
+              navigationPrompt: null,
+            },
+            lastTransition: {
+              number: 0,
+              status: "accepted",
+              action: "START",
+              message: `Started on the Home Screen with Visitor Wi-Fi ${
+                wifiConfigured ? "configured" : "unconfigured"
+              }.`,
+            },
+            history: [],
+          };
+        }
+
+        function record(state, action, status, message) {
+          const event = {
+            number: state.lastTransition.number + 1,
+            status,
+            action: action.type,
+            message,
+          };
+
+          return {
+            ...state,
+            lastTransition: event,
+            history: [...state.history, event],
+          };
+        }
+
+        function accept(state, action, message) {
+          return record(state, action, "accepted", message);
+        }
+
+        function reject(state, action, message) {
+          return record(state, action, "rejected", message);
+        }
+
+        function displayTimeoutApplies(state) {
+          const isHandoff =
+            state.navigation.path === "/" &&
+            ["Wi-Fi question", "Wi-Fi QR", "Collection QR"].includes(state.navigation.view);
+          const isCollectionDisplay =
+            state.navigation.path === "/" &&
+            state.navigation.view === "Collection browsing" &&
+            state.navigation.browseContext === "Collection Display";
+
+          return isHandoff || isCollectionDisplay;
+        }
+
+        function publicHomeReset(state) {
+          return {
+            ...state,
+            navigation: { ...HOME },
+            visitor: {
+              ...state.visitor,
+              handoffStep: null,
+              displayTimer: "inactive",
+              openVisitorDialogs: [],
+            },
+            admin: {
+              ...state.admin,
+              serverSession: "none",
+              clientBelievesAuthenticated: false,
+              editMode: false,
+              challenge: null,
+              pendingIntent: null,
+            },
+            settings: {
+              dirtySections: [],
+              drafts: {},
+              lastSaved: null,
+              navigationPrompt: null,
+            },
+          };
+        }
+
+        function collectionOrigin(state) {
+          if (state.navigation.browseContext === "Collection Display") {
+            return "Collection Display browsing";
+          }
+
+          return "Direct /browse";
+        }
+
+        function returnFromSettings(state, destination) {
+          if (destination === "Collection Display browsing") {
+            return {
+              ...state,
+              navigation: {
+                path: "/",
+                view: "Collection browsing",
+                browseContext: "Collection Display",
+                settingsOrigin: null,
+              },
+              visitor: {
+                ...state.visitor,
+                displayTimer: "running",
+              },
+              settings: {
+                ...state.settings,
+                navigationPrompt: null,
+              },
+            };
+          }
+
+          return {
+            ...state,
+            navigation: {
+              path: "/browse",
+              view: "Collection browsing",
+              browseContext: "Direct phone/browser",
+              settingsOrigin: null,
+            },
+            visitor: {
+              ...state.visitor,
+              displayTimer: "inactive",
+            },
+            settings: {
+              ...state.settings,
+              navigationPrompt: null,
+            },
+          };
+        }
+
+        function openChallenge(state, reason, pendingIntent) {
+          return {
+            ...state,
+            admin: {
+              ...state.admin,
+              clientBelievesAuthenticated: false,
+              editMode: false,
+              challenge: reason,
+              pendingIntent,
+            },
+          };
+        }
+
+        function transition(state, action) {
+          switch (action.type) {
+            case "RESET": {
+              const reset = createInitialState({
+                wifiConfigured: state.visitor.wifiConfigured,
+              });
+              return record(
+                reset,
+                action,
+                "accepted",
+                "Reset all transient state while keeping the current Wi-Fi setup choice.",
+              );
+            }
+
+            case "CONFIGURE_WIFI":
+              return accept(
+                {
+                  ...state,
+                  visitor: {
+                    ...state.visitor,
+                    wifiConfigured: true,
+                  },
+                },
+                action,
+                "Visitor Wi-Fi is now configured for prototype setup.",
+              );
+
+            case "REMOVE_WIFI":
+              return accept(
+                {
+                  ...state,
+                  visitor: {
+                    ...state.visitor,
+                    wifiConfigured: false,
+                  },
+                },
+                action,
+                "Visitor Wi-Fi is now unconfigured for prototype setup.",
+              );
+
+            case "BROWSE_ON_DISPLAY":
+              if (state.navigation.view !== "Home Screen") {
+                return reject(
+                  state,
+                  action,
+                  "Browse on this device is available only from the Home Screen.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  navigation: {
+                    path: "/",
+                    view: "Collection browsing",
+                    browseContext: "Collection Display",
+                    settingsOrigin: null,
+                  },
+                  visitor: {
+                    ...state.visitor,
+                    handoffStep: null,
+                    displayTimer: "running",
+                  },
+                },
+                action,
+                "Entered Collection Display browsing at /. Display inactivity can return this device Home.",
+              );
+
+            case "OPEN_ON_PHONE":
+              if (state.navigation.view !== "Home Screen") {
+                return reject(
+                  state,
+                  action,
+                  "Open on my phone is available only from the Home Screen.",
+                );
+              }
+
+              if (state.visitor.wifiConfigured) {
+                return accept(
+                  {
+                    ...state,
+                    navigation: {
+                      path: "/",
+                      view: "Wi-Fi question",
+                      browseContext: null,
+                      settingsOrigin: null,
+                    },
+                    visitor: {
+                      ...state.visitor,
+                      handoffStep: "Ask whether the phone is connected",
+                      displayTimer: "running",
+                    },
+                  },
+                  action,
+                  "Wi-Fi is configured, so the handoff asks whether the phone is already connected.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  navigation: {
+                    path: "/",
+                    view: "Collection QR",
+                    browseContext: null,
+                    settingsOrigin: null,
+                  },
+                  visitor: {
+                    ...state.visitor,
+                    handoffStep: "Show /browse collection QR",
+                    displayTimer: "running",
+                  },
+                },
+                action,
+                "Wi-Fi is unconfigured, so the visitor skips directly to the /browse collection QR.",
+              );
+
+            case "PHONE_ALREADY_CONNECTED":
+              if (state.navigation.view !== "Wi-Fi question") {
+                return reject(
+                  state,
+                  action,
+                  "This answer is legal only while the Wi-Fi connection question is visible.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  navigation: {
+                    ...state.navigation,
+                    view: "Collection QR",
+                  },
+                  visitor: {
+                    ...state.visitor,
+                    handoffStep: "Show /browse collection QR",
+                    displayTimer: "running",
+                  },
+                },
+                action,
+                "The connected phone can proceed directly to the /browse collection QR.",
+              );
+
+            case "PHONE_NEEDS_WIFI":
+              if (state.navigation.view !== "Wi-Fi question") {
+                return reject(
+                  state,
+                  action,
+                  "This answer is legal only while the Wi-Fi connection question is visible.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  navigation: {
+                    ...state.navigation,
+                    view: "Wi-Fi QR",
+                  },
+                  visitor: {
+                    ...state.visitor,
+                    handoffStep: "Show Wi-Fi QR and manual fallback",
+                    displayTimer: "running",
+                  },
+                },
+                action,
+                "The handoff now shows the configured Wi-Fi QR and manual connection fallback.",
+              );
+
+            case "CONTINUE_AFTER_WIFI":
+              if (state.navigation.view !== "Wi-Fi QR") {
+                return reject(
+                  state,
+                  action,
+                  "Continue is legal only after the visitor has reached the Wi-Fi QR step.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  navigation: {
+                    ...state.navigation,
+                    view: "Collection QR",
+                  },
+                  visitor: {
+                    ...state.visitor,
+                    handoffStep: "Show /browse collection QR",
+                    displayTimer: "running",
+                  },
+                },
+                action,
+                "Manual confirmation advances to the /browse collection QR; Wi-Fi connection is not guessed.",
+              );
+
+            case "START_OVER":
+              if (
+                !["Wi-Fi question", "Wi-Fi QR", "Collection QR"].includes(state.navigation.view)
+              ) {
+                return reject(
+                  state,
+                  action,
+                  "Start over is legal only after the phone handoff has left the Home Screen.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  navigation: { ...HOME },
+                  visitor: {
+                    ...state.visitor,
+                    handoffStep: null,
+                    displayTimer: "inactive",
+                    openVisitorDialogs: [],
+                  },
+                },
+                action,
+                "Cleared the phone handoff and returned to the Home Screen.",
+              );
+
+            case "VISITOR_INTERACTION":
+              if (!displayTimeoutApplies(state)) {
+                return reject(
+                  state,
+                  action,
+                  "Visitor activity resets a timer only in a Home Screen handoff or Collection Display session.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  visitor: {
+                    ...state.visitor,
+                    displayTimer: "running",
+                  },
+                },
+                action,
+                "Visitor activity reset the Collection Display inactivity timer.",
+              );
+
+            case "DISPLAY_COUNTDOWN":
+              if (!displayTimeoutApplies(state)) {
+                return reject(
+                  state,
+                  action,
+                  "The final countdown cannot start because this is not a timed Collection Display state.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  visitor: {
+                    ...state.visitor,
+                    displayTimer: "final 10-second countdown",
+                  },
+                },
+                action,
+                "The visible final 10-second reset countdown has started.",
+              );
+
+            case "DISPLAY_TIMEOUT":
+              if (!displayTimeoutApplies(state)) {
+                return reject(
+                  state,
+                  action,
+                  "Display timeout is illegal here. Direct /browse sessions must remain on /browse.",
+                );
+              }
+
+              return accept(
+                publicHomeReset(state),
+                action,
+                "Display inactivity performed a safe public reset: Home Screen, signed out, Edit Mode off, and transient visitor state cleared.",
+              );
+
+            case "LOAD_DIRECT_BROWSE":
+              return accept(
+                {
+                  ...state,
+                  navigation: {
+                    path: "/browse",
+                    view: "Collection browsing",
+                    browseContext: "Direct phone/browser",
+                    settingsOrigin: null,
+                  },
+                  visitor: {
+                    ...state.visitor,
+                    handoffStep: null,
+                    displayTimer: "inactive",
+                    openVisitorDialogs: [],
+                  },
+                  admin: {
+                    ...state.admin,
+                    editMode: false,
+                    challenge: null,
+                    pendingIntent: null,
+                  },
+                  settings: {
+                    dirtySections: [],
+                    drafts: {},
+                    lastSaved: null,
+                    navigationPrompt: null,
+                  },
+                },
+                action,
+                "Loaded /browse directly. This is ordinary browsing, not a Collection Display session.",
+              );
+
+            case "LOAD_DIRECT_SETTINGS": {
+              const directSettingsState = {
+                ...state,
+                navigation: {
+                  path: "/settings",
+                  view: "Settings sign-in",
+                  browseContext: null,
+                  settingsOrigin: "Direct /browse",
+                },
+                visitor: {
+                  ...state.visitor,
+                  handoffStep: null,
+                  displayTimer: "inactive",
+                  openVisitorDialogs: [],
+                },
+                admin: {
+                  ...state.admin,
+                  editMode: false,
+                  challenge: null,
+                  pendingIntent: null,
+                },
+                settings: {
+                  dirtySections: [],
+                  drafts: {},
+                  lastSaved: null,
+                  navigationPrompt: null,
+                },
+              };
+
+              if (state.admin.clientBelievesAuthenticated) {
+                return accept(
+                  {
+                    ...directSettingsState,
+                    navigation: {
+                      ...directSettingsState.navigation,
+                      view: "Settings",
+                    },
+                  },
+                  action,
+                  "Loaded /settings directly with the browser's last-known authenticated state.",
+                );
+              }
+
+              return accept(
+                openChallenge(directSettingsState, "Sign in to open direct /settings", {
+                  type: "open-settings",
+                  origin: "Direct /browse",
+                  directEntry: true,
+                }),
+                action,
+                "Loaded /settings directly and opened sign-in. Cancel returns to /browse.",
+              );
+            }
+
+            case "REQUEST_GENERIC_SIGN_IN":
+              if (state.admin.clientBelievesAuthenticated) {
+                return reject(state, action, "The browser already has a confirmed Admin Session.");
+              }
+
+              if (state.navigation.view !== "Collection browsing") {
+                return reject(
+                  state,
+                  action,
+                  "Generic Sign in is modeled from the collection menu, not this surface.",
+                );
+              }
+
+              return accept(
+                openChallenge(state, "Generic administrator sign-in", {
+                  type: "generic-sign-in",
+                }),
+                action,
+                "Opened sign-in with a generic intent. Success must leave Edit Mode off.",
+              );
+
+            case "SELECT_EDIT_MODE":
+              if (state.navigation.view !== "Collection browsing") {
+                return reject(
+                  state,
+                  action,
+                  "Edit Mode can be selected only from collection browsing.",
+                );
+              }
+
+              if (state.admin.clientBelievesAuthenticated) {
+                return accept(
+                  {
+                    ...state,
+                    admin: {
+                      ...state.admin,
+                      editMode: true,
+                    },
+                  },
+                  action,
+                  "Enabled Edit Mode under the confirmed Admin Session.",
+                );
+              }
+
+              return accept(
+                openChallenge(state, "Sign in to enter Edit Mode", {
+                  type: "enable-edit-mode",
+                }),
+                action,
+                "Edit Mode remains off while sign-in captures the initiating Edit Mode intent.",
+              );
+
+            case "SELECT_VIEW_MODE":
+              if (!state.admin.editMode) {
+                return reject(state, action, "View Mode is already active.");
+              }
+
+              return accept(
+                {
+                  ...state,
+                  admin: {
+                    ...state.admin,
+                    editMode: false,
+                  },
+                },
+                action,
+                "Exited Edit Mode without ending the Admin Session.",
+              );
+
+            case "SELECT_SETTINGS": {
+              if (state.navigation.view !== "Collection browsing") {
+                return reject(
+                  state,
+                  action,
+                  "Settings can be selected only from the collection menu in this prototype.",
+                );
+              }
+
+              const origin = collectionOrigin(state);
+
+              if (state.admin.clientBelievesAuthenticated) {
+                return accept(
+                  {
+                    ...state,
+                    navigation: {
+                      path: "/settings",
+                      view: "Settings",
+                      browseContext: null,
+                      settingsOrigin: origin,
+                    },
+                    visitor: {
+                      ...state.visitor,
+                      displayTimer: "inactive",
+                    },
+                    admin: {
+                      ...state.admin,
+                      editMode: false,
+                    },
+                  },
+                  action,
+                  "Opened authenticated Settings and retained the originating browsing view.",
+                );
+              }
+
+              return accept(
+                openChallenge(state, "Sign in to open Settings", {
+                  type: "open-settings",
+                  origin,
+                }),
+                action,
+                "Settings remains pending while sign-in preserves the originating browsing view.",
+              );
+            }
+
+            case "CANCEL_SIGN_IN": {
+              if (!state.admin.challenge || !state.admin.pendingIntent) {
+                return reject(state, action, "There is no sign-in challenge to cancel.");
+              }
+
+              const cancelledState = {
+                ...state,
+                admin: {
+                  ...state.admin,
+                  clientBelievesAuthenticated: false,
+                  editMode: false,
+                  challenge: null,
+                  pendingIntent: null,
+                },
+              };
+
+              if (
+                state.admin.pendingIntent.type === "open-settings" &&
+                state.admin.pendingIntent.directEntry
+              ) {
+                return accept(
+                  returnFromSettings(cancelledState, "Direct /browse"),
+                  action,
+                  "Cancelled a direct Settings sign-in and returned to /browse.",
+                );
+              }
+
+              return accept(
+                cancelledState,
+                action,
+                "Cancelled sign-in and returned to the surface that opened the challenge.",
+              );
+            }
+
+            case "AUTHENTICATE":
+              if (!state.admin.challenge || !state.admin.pendingIntent) {
+                return reject(
+                  state,
+                  action,
+                  "Authentication success is illegal without an active sign-in challenge.",
+                );
+              }
+
+              if (state.admin.pendingIntent.type === "enable-edit-mode") {
+                return accept(
+                  {
+                    ...state,
+                    admin: {
+                      serverSession: "active",
+                      clientBelievesAuthenticated: true,
+                      editMode: true,
+                      challenge: null,
+                      pendingIntent: null,
+                    },
+                  },
+                  action,
+                  "Authenticated and resumed the explicit Edit Mode intent.",
+                );
+              }
+
+              if (state.admin.pendingIntent.type === "open-settings") {
+                return accept(
+                  {
+                    ...state,
+                    navigation: {
+                      path: "/settings",
+                      view: "Settings",
+                      browseContext: null,
+                      settingsOrigin: state.admin.pendingIntent.origin,
+                    },
+                    visitor: {
+                      ...state.visitor,
+                      displayTimer: "inactive",
+                    },
+                    admin: {
+                      serverSession: "active",
+                      clientBelievesAuthenticated: true,
+                      editMode: false,
+                      challenge: null,
+                      pendingIntent: null,
+                    },
+                  },
+                  action,
+                  "Authenticated and resumed the pending Settings navigation in View Mode.",
+                );
+              }
+
+              if (state.admin.pendingIntent.type === "save-settings-section") {
+                const section = state.admin.pendingIntent.section;
+                const payload = state.admin.pendingIntent.payload;
+                const { [section]: savedDraft, ...remainingDrafts } = state.settings.drafts;
+
+                if (JSON.stringify(savedDraft) !== JSON.stringify(payload)) {
+                  return reject(
+                    state,
+                    action,
+                    "The retained draft no longer matches the captured save payload, so automatic resumption is unsafe.",
+                  );
+                }
+
+                return accept(
+                  {
+                    ...state,
+                    admin: {
+                      serverSession: "active",
+                      clientBelievesAuthenticated: true,
+                      editMode: false,
+                      challenge: null,
+                      pendingIntent: null,
+                    },
+                    settings: {
+                      ...state.settings,
+                      dirtySections: state.settings.dirtySections.filter(
+                        (dirtySection) => dirtySection !== section,
+                      ),
+                      drafts: remainingDrafts,
+                      lastSaved: {
+                        section,
+                        payload: savedDraft,
+                      },
+                    },
+                  },
+                  action,
+                  `Re-authenticated and resumed the exact pending ${section} save with ${JSON.stringify(savedDraft)}.`,
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  admin: {
+                    serverSession: "active",
+                    clientBelievesAuthenticated: true,
+                    editMode: false,
+                    challenge: null,
+                    pendingIntent: null,
+                  },
+                },
+                action,
+                "Authenticated generically and remained in View Mode.",
+              );
+
+            case "EDIT_SETTINGS_SECTION":
+              if (state.navigation.view !== "Settings") {
+                return reject(
+                  state,
+                  action,
+                  "A Settings draft can be edited only on the Settings page.",
+                );
+              }
+
+              if (!state.admin.clientBelievesAuthenticated) {
+                return reject(
+                  state,
+                  action,
+                  "Settings input cannot be edited until the browser has confirmed authentication.",
+                );
+              }
+
+              return accept(
+                {
+                  ...state,
+                  settings: {
+                    ...state.settings,
+                    dirtySections: [
+                      ...new Set([...state.settings.dirtySections, action.section]),
+                    ],
+                    drafts: {
+                      ...state.settings.drafts,
+                      [action.section]: action.draft ?? { idleTimeoutMinutes: 7 },
+                    },
+                  },
+                },
+                action,
+                `Marked ${action.section} dirty with draft ${JSON.stringify(action.draft ?? { idleTimeoutMinutes: 7 })}.`,
+              );
+
+            case "SAVE_SETTINGS_SECTION":
+              if (state.navigation.view !== "Settings") {
+                return reject(state, action, "A Settings section can be saved only from Settings.");
+              }
+
+              if (!state.settings.dirtySections.includes(action.section)) {
+                return reject(
+                  state,
+                  action,
+                  `${action.section} has no unsaved input to save.`,
+                );
+              }
+
+              if (
+                state.admin.serverSession !== "active" ||
+                !state.admin.clientBelievesAuthenticated
+              ) {
+                return accept(
+                  openChallenge(state, "Admin Session expired while saving", {
+                    type: "save-settings-section",
+                    section: action.section,
+                    payload: state.settings.drafts[action.section],
+                  }),
+                  action,
+                  `The protected save received 401. The exact ${action.section} payload ${JSON.stringify(state.settings.drafts[action.section])} was retained for re-authentication.`,
+                );
+              }
+
+              {
+                const payload = state.settings.drafts[action.section];
+                const { [action.section]: savedDraft, ...remainingDrafts } =
+                  state.settings.drafts;
+                return accept(
+                  {
+                    ...state,
+                    settings: {
+                      ...state.settings,
+                      dirtySections: state.settings.dirtySections.filter(
+                        (dirtySection) => dirtySection !== action.section,
+                      ),
+                      drafts: remainingDrafts,
+                      lastSaved: {
+                        section: action.section,
+                        payload: savedDraft,
+                      },
+                    },
+                  },
+                  action,
+                  `Saved ${action.section} with ${JSON.stringify(payload)} and cleared only that section's dirty state.`,
+                );
+              }
+
+            case "REQUEST_LEAVE_SETTINGS":
+              if (state.navigation.view !== "Settings") {
+                return reject(state, action, "There is no Settings navigation to leave.");
+              }
+
+              if (state.settings.dirtySections.length > 0) {
+                return accept(
+                  {
+                    ...state,
+                    settings: {
+                      ...state.settings,
+                      navigationPrompt: {
+                        destination: state.navigation.settingsOrigin ?? "Direct /browse",
+                        warning: `Discard unsaved ${state.settings.dirtySections.join(", ")} changes?`,
+                      },
+                    },
+                  },
+                  action,
+                  "Navigation paused for an explicit dirty-input decision.",
+                );
+              }
+
+              return accept(
+                returnFromSettings(
+                  state,
+                  state.navigation.settingsOrigin ?? "Direct /browse",
+                ),
+                action,
+                "Settings was clean, so navigation returned to the originating browsing view.",
+              );
+
+            case "STAY_IN_SETTINGS":
+              if (!state.settings.navigationPrompt) {
+                return reject(state, action, "There is no dirty-navigation prompt to cancel.");
+              }
+
+              return accept(
+                {
+                  ...state,
+                  settings: {
+                    ...state.settings,
+                    navigationPrompt: null,
+                  },
+                },
+                action,
+                "Stayed in Settings and preserved all unsaved input.",
+              );
+
+            case "DISCARD_AND_LEAVE":
+              if (!state.settings.navigationPrompt) {
+                return reject(state, action, "There is no dirty-navigation prompt to confirm.");
+              }
+
+              return accept(
+                returnFromSettings(
+                  {
+                    ...state,
+                    settings: {
+                      dirtySections: [],
+                      drafts: {},
+                      lastSaved: null,
+                      navigationPrompt: null,
+                    },
+                  },
+                  state.settings.navigationPrompt.destination,
+                ),
+                action,
+                "Discarded unsaved input and returned to the originating browsing view.",
+              );
+
+            case "SESSION_ELAPSES":
+              if (state.admin.serverSession !== "active") {
+                return reject(state, action, "No active server session exists to expire.");
+              }
+
+              return accept(
+                {
+                  ...state,
+                  admin: {
+                    ...state.admin,
+                    serverSession: "expired",
+                  },
+                },
+                action,
+                "The server session expired after inactivity. The browser still believes it is authenticated until the next protected request.",
+              );
+
+            case "SELECT_HOME_SCREEN":
+              if (state.navigation.view !== "Collection browsing") {
+                return reject(
+                  state,
+                  action,
+                  "Home Screen is modeled as a collection-menu action.",
+                );
+              }
+
+              return accept(
+                publicHomeReset(state),
+                action,
+                "Home Screen performed a safe public handoff: signed out, Edit Mode off, and visitor transients cleared.",
+              );
+
+            default:
+              return reject(state, action, `Unknown action: ${action.type}`);
+          }
+        }
+
+        return {
+          createInitialState,
+          displayTimeoutApplies,
+          transition,
+        };
+      })();
+    </script>
+
+    <script>
+      const actionGroups = [
+        {
+          heading: "Prototype setup",
+          actions: [
+            { label: "Reset transient state", type: "RESET", className: "setup" },
+            { label: "Configure Visitor Wi-Fi", type: "CONFIGURE_WIFI", className: "setup" },
+            { label: "Remove Visitor Wi-Fi", type: "REMOVE_WIFI", className: "setup" },
+            { label: "Load /browse directly", type: "LOAD_DIRECT_BROWSE", className: "setup" },
+            { label: "Load /settings directly", type: "LOAD_DIRECT_SETTINGS", className: "setup" },
+          ],
+        },
+        {
+          heading: "Visitor navigation",
+          actions: [
+            { label: "Browse on this device", type: "BROWSE_ON_DISPLAY" },
+            { label: "Open on my phone", type: "OPEN_ON_PHONE" },
+            { label: "Yes, phone is connected", type: "PHONE_ALREADY_CONNECTED" },
+            { label: "No, phone needs Wi-Fi", type: "PHONE_NEEDS_WIFI" },
+            { label: "I'm connected - continue", type: "CONTINUE_AFTER_WIFI" },
+            { label: "Start over", type: "START_OVER" },
+          ],
+        },
+        {
+          heading: "Display inactivity",
+          actions: [
+            { label: "Visitor interaction", type: "VISITOR_INTERACTION" },
+            { label: "Start final countdown", type: "DISPLAY_COUNTDOWN" },
+            { label: "Expire display timer", type: "DISPLAY_TIMEOUT", className: "danger" },
+          ],
+        },
+        {
+          heading: "Administrator",
+          actions: [
+            { label: "Generic Sign in", type: "REQUEST_GENERIC_SIGN_IN" },
+            { label: "Select Edit Mode", type: "SELECT_EDIT_MODE" },
+            { label: "Select View Mode", type: "SELECT_VIEW_MODE" },
+            { label: "Select Settings", type: "SELECT_SETTINGS" },
+            { label: "Complete authentication", type: "AUTHENTICATE" },
+            { label: "Cancel sign-in", type: "CANCEL_SIGN_IN" },
+            { label: "Let Admin Session expire", type: "SESSION_ELAPSES", className: "danger" },
+            { label: "Select Home Screen", type: "SELECT_HOME_SCREEN", className: "danger" },
+          ],
+        },
+        {
+          heading: "Settings",
+          actions: [
+            {
+              label: "Edit Visitor display section",
+              type: "EDIT_SETTINGS_SECTION",
+              section: "Visitor display",
+              draft: { idleTimeoutMinutes: 7 },
+            },
+            {
+              label: "Save Visitor display section",
+              type: "SAVE_SETTINGS_SECTION",
+              section: "Visitor display",
+            },
+            { label: "Try to leave Settings", type: "REQUEST_LEAVE_SETTINGS" },
+            { label: "Stay in Settings", type: "STAY_IN_SETTINGS" },
+            { label: "Discard and leave", type: "DISCARD_AND_LEAVE", className: "danger" },
+          ],
+        },
+      ];
+
+      const scenarios = [
+        {
+          title: "Display browsing returns Home after inactivity",
+          description:
+            "Collection Display browsing stays at /, resets its timer on interaction, and performs a safe public reset when inactivity expires.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Browse on this device", type: "BROWSE_ON_DISPLAY" },
+            { label: "Interact with the collection", type: "VISITOR_INTERACTION" },
+            { label: "Reach the final 10-second countdown", type: "DISPLAY_COUNTDOWN" },
+            { label: "Let display inactivity expire", type: "DISPLAY_TIMEOUT" },
+          ],
+        },
+        {
+          title: "Already-connected phone reaches /browse QR",
+          description:
+            "Configured Wi-Fi asks one question. A connected visitor skips the Wi-Fi credential and sees the collection QR.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Open on my phone", type: "OPEN_ON_PHONE" },
+            { label: "Yes, my phone is connected", type: "PHONE_ALREADY_CONNECTED" },
+          ],
+        },
+        {
+          title: "Disconnected phone uses Wi-Fi first",
+          description:
+            "The model does not guess whether joining succeeded. It waits for the visitor to continue before showing the collection QR.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Open on my phone", type: "OPEN_ON_PHONE" },
+            { label: "No, my phone needs Wi-Fi", type: "PHONE_NEEDS_WIFI" },
+            { label: "I'm connected - continue", type: "CONTINUE_AFTER_WIFI" },
+          ],
+        },
+        {
+          title: "No Wi-Fi setup skips to the collection QR",
+          description:
+            "Visitors see no warning or setup hint when Visitor Wi-Fi is unconfigured; they go directly to the /browse QR.",
+          wifiConfigured: false,
+          steps: [{ label: "Open on my phone", type: "OPEN_ON_PHONE" }],
+        },
+        {
+          title: "Edit Mode intent survives sign-in",
+          description:
+            "Selecting Edit Mode while signed out opens authentication without enabling editing early. Success resumes only that intent.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Browse on this device", type: "BROWSE_ON_DISPLAY" },
+            { label: "Select Edit Mode", type: "SELECT_EDIT_MODE" },
+            { label: "Authenticate", type: "AUTHENTICATE" },
+          ],
+        },
+        {
+          title: "Generic sign-in remains in View Mode",
+          description:
+            "Admin Session and Edit Mode are separate. Generic authentication grants permission but does not expose editing controls.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Browse on this device", type: "BROWSE_ON_DISPLAY" },
+            { label: "Choose generic Sign in", type: "REQUEST_GENERIC_SIGN_IN" },
+            { label: "Authenticate", type: "AUTHENTICATE" },
+          ],
+        },
+        {
+          title: "Dirty Settings blocks navigation",
+          description:
+            "Settings remembers where it came from. Dirty input pauses navigation, supports staying, and requires explicit discard before leaving.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Browse on this device", type: "BROWSE_ON_DISPLAY" },
+            { label: "Select Settings", type: "SELECT_SETTINGS" },
+            { label: "Authenticate and resume Settings", type: "AUTHENTICATE" },
+            {
+              label: "Edit Visitor display",
+              type: "EDIT_SETTINGS_SECTION",
+              section: "Visitor display",
+              draft: { idleTimeoutMinutes: 7 },
+            },
+            { label: "Try to leave Settings", type: "REQUEST_LEAVE_SETTINGS" },
+            { label: "Stay and keep the draft", type: "STAY_IN_SETTINGS" },
+            { label: "Try to leave again", type: "REQUEST_LEAVE_SETTINGS" },
+            { label: "Discard and return", type: "DISCARD_AND_LEAVE" },
+          ],
+        },
+        {
+          title: "Expired session preserves and resumes a save",
+          description:
+            "Server expiry is initially invisible to the browser. The next protected save receives 401, turns off Edit Mode, retains the exact draft, and resumes after authentication.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Browse on this device", type: "BROWSE_ON_DISPLAY" },
+            { label: "Select Settings", type: "SELECT_SETTINGS" },
+            { label: "Authenticate and resume Settings", type: "AUTHENTICATE" },
+            {
+              label: "Edit Visitor display",
+              type: "EDIT_SETTINGS_SECTION",
+              section: "Visitor display",
+              draft: { idleTimeoutMinutes: 12 },
+            },
+            { label: "Let the server session expire", type: "SESSION_ELAPSES" },
+            {
+              label: "Attempt the protected save",
+              type: "SAVE_SETTINGS_SECTION",
+              section: "Visitor display",
+            },
+            { label: "Re-authenticate and resume the save", type: "AUTHENTICATE" },
+          ],
+        },
+        {
+          title: "Home Screen is a safe public handoff",
+          description:
+            "Even from authenticated Edit Mode, Home Screen must end the Admin Session, exit Edit Mode, clear transients, and return to /.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Browse on this device", type: "BROWSE_ON_DISPLAY" },
+            { label: "Select Edit Mode", type: "SELECT_EDIT_MODE" },
+            { label: "Authenticate and enter Edit Mode", type: "AUTHENTICATE" },
+            { label: "Select Home Screen", type: "SELECT_HOME_SCREEN" },
+          ],
+        },
+        {
+          title: "Direct /browse cannot time out to Home",
+          description:
+            "A directly loaded phone/browser session has no Collection Display timer. Countdown and expiry attempts are visibly rejected.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Load /browse directly", type: "LOAD_DIRECT_BROWSE" },
+            { label: "Try to start the display countdown", type: "DISPLAY_COUNTDOWN" },
+            { label: "Try to expire the display timer", type: "DISPLAY_TIMEOUT" },
+          ],
+        },
+        {
+          title: "Direct /settings resumes or cancels to /browse",
+          description:
+            "A direct signed-out visit keeps /settings addressable, returns to /browse when sign-in is cancelled, and resumes Settings after successful authentication.",
+          wifiConfigured: true,
+          steps: [
+            { label: "Load /settings directly", type: "LOAD_DIRECT_SETTINGS" },
+            { label: "Cancel sign-in", type: "CANCEL_SIGN_IN" },
+            { label: "Load /settings directly again", type: "LOAD_DIRECT_SETTINGS" },
+            { label: "Authenticate and resume Settings", type: "AUTHENTICATE" },
+            { label: "Leave clean Settings", type: "REQUEST_LEAVE_SETTINGS" },
+          ],
+        },
+      ];
+
+      let state = HomeScreenStateModel.createInitialState();
+      let activeScenario = 0;
+      let scenarioStep = 0;
+
+      const transitionBanner = document.querySelector("#transition-banner");
+      const stateGrid = document.querySelector("#state-grid");
+      const stateJson = document.querySelector("#state-json");
+      const freePlay = document.querySelector("#free-play");
+      const scenarioTabs = document.querySelector("#scenario-tabs");
+      const scenarioPanel = document.querySelector("#scenario-panel");
+      const history = document.querySelector("#history");
+
+      function yesNo(value) {
+        return value ? "Yes" : "No";
+      }
+
+      function show(value, fallback = "None") {
+        if (Array.isArray(value)) {
+          return value.length ? value.join(", ") : fallback;
+        }
+
+        if (value && typeof value === "object") {
+          return Object.keys(value).length ? JSON.stringify(value) : fallback;
+        }
+
+        return value ?? fallback;
+      }
+
+      function pendingIntentLabel(intent) {
+        if (!intent) return "None";
+        if (intent.type === "save-settings-section") {
+          return `Resume ${intent.section} save with retained draft`;
+        }
+        if (intent.type === "open-settings") {
+          return `Open Settings from ${intent.origin}`;
+        }
+        if (intent.type === "enable-edit-mode") return "Enable Edit Mode";
+        return "Generic sign-in";
+      }
+
+      function stateCard(title, rows) {
+        const terms = rows
+          .map(
+            ([label, value]) =>
+              `<dt>${label}</dt><dd>${show(value)}</dd>`,
+          )
+          .join("");
+        return `<article class="state-card"><h3>${title}</h3><dl>${terms}</dl></article>`;
+      }
+
+      function renderState() {
+        const event = state.lastTransition;
+        transitionBanner.className = `transition-banner ${event.status}`;
+        transitionBanner.innerHTML = `<strong>${event.status === "accepted" ? "Accepted" : "Illegal transition"}: ${event.action}</strong>${event.message}`;
+
+        stateGrid.innerHTML = [
+          stateCard("Navigation", [
+            ["Path", state.navigation.path],
+            ["Visible surface", state.navigation.view],
+            ["Browsing context", state.navigation.browseContext],
+            ["Settings return target", state.navigation.settingsOrigin],
+          ]),
+          stateCard("Visitor display", [
+            ["Wi-Fi configured", yesNo(state.visitor.wifiConfigured)],
+            ["Phone handoff", state.visitor.handoffStep],
+            [
+              "Timeout applies",
+              yesNo(HomeScreenStateModel.displayTimeoutApplies(state)),
+            ],
+            ["Timer state", state.visitor.displayTimer],
+            ["Open visitor dialogs", state.visitor.openVisitorDialogs],
+          ]),
+          stateCard("Administrator", [
+            ["Server session", state.admin.serverSession],
+            [
+              "Browser believes signed in",
+              yesNo(state.admin.clientBelievesAuthenticated),
+            ],
+            ["Edit Mode", state.admin.editMode ? "On" : "Off (View Mode)"],
+            ["Sign-in challenge", state.admin.challenge],
+            ["Pending intent", pendingIntentLabel(state.admin.pendingIntent)],
+          ]),
+          stateCard("Settings", [
+            ["Dirty sections", state.settings.dirtySections],
+            ["Retained drafts", state.settings.drafts],
+            ["Last saved payload", state.settings.lastSaved],
+            [
+              "Navigation warning",
+              state.settings.navigationPrompt?.warning,
+            ],
+            [
+              "Warning destination",
+              state.settings.navigationPrompt?.destination,
+            ],
+          ]),
+        ].join("");
+
+        stateJson.textContent = JSON.stringify(state, null, 2);
+      }
+
+      function renderHistory() {
+        const recent = [...state.history].reverse().slice(0, 10);
+        if (!recent.length) {
+          history.innerHTML = '<li class="empty">No actions yet.</li>';
+          return;
+        }
+
+        history.innerHTML = recent
+          .map(
+            (event) => `
+              <li class="history-item ${event.status === "rejected" ? "rejected" : ""}">
+                <strong>#${event.number} ${event.action} - ${event.status}</strong>
+                ${event.message}
+              </li>
+            `,
+          )
+          .join("");
+      }
+
+      function dispatch(action, source = "free-play") {
+        state = HomeScreenStateModel.transition(state, action);
+        if (source === "walkthrough") {
+          scenarioStep += 1;
+        }
+        render();
+      }
+
+      function renderFreePlay() {
+        freePlay.innerHTML = actionGroups
+          .map(
+            (group) => `
+              <div class="action-group">
+                <h3>${group.heading}</h3>
+                <div class="button-grid">
+                  ${group.actions
+                    .map(
+                      (action) => `
+                        <button
+                          class="action-button ${action.className ?? ""}"
+                          type="button"
+                          data-free-action='${JSON.stringify(action)}'
+                        >
+                          ${action.label}
+                        </button>
+                      `,
+                    )
+                    .join("")}
+                </div>
+              </div>
+            `,
+          )
+          .join("");
+
+        freePlay.querySelectorAll("[data-free-action]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const action = JSON.parse(button.dataset.freeAction);
+            delete action.label;
+            delete action.className;
+            dispatch(action);
+          });
+        });
+      }
+
+      function resetScenario(index) {
+        activeScenario = index;
+        scenarioStep = 0;
+        state = HomeScreenStateModel.createInitialState({
+          wifiConfigured: scenarios[index].wifiConfigured,
+        });
+        render();
+      }
+
+      function renderScenarios() {
+        scenarioTabs.innerHTML = scenarios
+          .map(
+            (scenario, index) => `
+              <button
+                id="scenario-tab-${index}"
+                class="tab-button"
+                type="button"
+                role="tab"
+                aria-selected="${index === activeScenario}"
+                aria-controls="scenario-panel"
+                title="${scenario.title}"
+                data-scenario-index="${index}"
+              >
+                ${index + 1}
+              </button>
+            `,
+          )
+          .join("");
+
+        scenarioTabs.querySelectorAll("[data-scenario-index]").forEach((button) => {
+          button.addEventListener("click", () => {
+            resetScenario(Number(button.dataset.scenarioIndex));
+          });
+        });
+
+        const scenario = scenarios[activeScenario];
+        scenarioPanel.setAttribute("aria-labelledby", `scenario-tab-${activeScenario}`);
+        scenarioPanel.innerHTML = `
+          <h3 class="scenario-heading">${activeScenario + 1}. ${scenario.title}</h3>
+          <p class="scenario-copy">${scenario.description}</p>
+          <div class="walkthrough-actions">
+            ${scenario.steps
+              .map((step, index) => {
+                const stateClass =
+                  index < scenarioStep ? "done" : index === scenarioStep ? "current" : "";
+                return `
+                  <div class="walkthrough-step ${stateClass}">
+                    <span class="step-number">${index < scenarioStep ? "✓" : index + 1}</span>
+                    <button
+                      class="walkthrough-button"
+                      type="button"
+                      data-step-index="${index}"
+                      ${index === scenarioStep ? "" : "disabled"}
+                    >
+                      ${step.label}
+                    </button>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+          <button class="restart-button" type="button" id="restart-scenario">
+            Restart this walkthrough
+          </button>
+        `;
+
+        scenarioPanel.querySelectorAll("[data-step-index]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const step = scenario.steps[Number(button.dataset.stepIndex)];
+            const action = { ...step };
+            delete action.label;
+            dispatch(action, "walkthrough");
+          });
+        });
+
+        document.querySelector("#restart-scenario").addEventListener("click", () => {
+          resetScenario(activeScenario);
+        });
+      }
+
+      function render() {
+        renderState();
+        renderHistory();
+        renderScenarios();
+      }
+
+      renderFreePlay();
+      render();
+    </script>
+  </body>
+</html>

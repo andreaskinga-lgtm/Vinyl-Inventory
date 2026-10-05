@@ -92,8 +92,6 @@ It does not apply to ordinary direct `/browse` sessions.
 Touch, pointer, keyboard, scroll, search/filter changes, and dialog interactions reset the
 Collection Display timer. During the final 10 seconds, show a visible reset countdown. On
 expiry, close visitor dialogs, clear transient handoff state, and return to the Home Screen.
-Treat timeout expiry as the same safe public handoff as selecting **Home Screen**: exit Edit
-Mode, end the Admin Session, and clear pending administrator intent before rendering Home.
 
 Keeping the physical display awake is an operator responsibility. The HTTP LAN deployment
 cannot rely on the browser Screen Wake Lock API. Deployment documentation should explain how
@@ -164,11 +162,6 @@ Use opaque random session identifiers stored in server memory:
 An administrator who types locally for more than 30 minutes without touching the server may
 need to sign in again when saving. The client retains pending form input where practical and
 resumes the requested action after re-authentication.
-
-The client must not predict server expiry from a local timer. Keep the browser's last-known
-authenticated state distinct from server-authoritative session validity: the browser can still
-look signed in after the server session expires, then learns of expiry only when an authenticated
-request returns `401`.
 
 ### Authentication endpoints
 
@@ -343,25 +336,6 @@ present. Environment-managed credentials continue to reject mutations with `409`
 Each section saves independently. The page tracks dirty state per section. **Cancel**, in-app
 navigation, browser Back, refresh, and close must warn before discarding any dirty section.
 After all changes are saved or discarded, return to the view that opened Settings.
-
-### Client transition model
-
-The validated logic prototype uses one pure transition function over lifted App state rather than
-independent booleans that can drift into contradictory combinations. Keep these concerns
-orthogonal:
-
-- navigation: path, visible surface, Collection Display versus direct `/browse`, and Settings
-  return target;
-- visitor display: phone-handoff step and whether the display timer applies;
-- administrator: last-known authentication, Edit Mode, sign-in challenge, and a tagged pending
-  intent;
-- Settings: dirty sections, retained draft/action payload, and dirty-navigation prompt.
-
-Authentication success resumes only the tagged initiating intent: generic sign-in remains in View
-Mode, Edit Mode intent enables editing, Settings intent opens Settings, and a retained idempotent
-Settings save resumes with its exact draft. A timeout transition exists only for Home Screen
-handoff and Collection Display states; direct `/browse` must reject or ignore that event without
-navigating Home.
 
 ## Reliable authenticated writes
 
