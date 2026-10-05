@@ -12,7 +12,7 @@ explicit so the checkout and the installed dependencies come from the same relea
 ```sh
 set -eu
 
-RELEASE_TAG=v1.0.0
+RELEASE_TAG=v1.2.0
 APP_DIR=/opt/vinyl-inventory
 DATA_DIR=/var/lib/vinyl-inventory
 SERVICE=vinyl-inventory
@@ -39,9 +39,31 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now vinyl-inventory.service
 ```
 
-The environment file must remain root-owned with mode `0600`. The service can write its
-persisted JSON and temporary files only under `/var/lib/vinyl-inventory`; its output is in the
-system journal.
+Set a unique `ADMIN_PASSWORD` with at least 10 characters in the protected environment file.
+The value is compared exactly; do not add or remove whitespace. Leaving it empty is supported
+for a public read-only installation, but sign-in, editing, Settings, and Discogs operations will
+remain unavailable. Keep the file root-owned with mode `0600`:
+
+```sh
+sudo chown root:root /etc/vinyl-inventory.env
+sudo chmod 600 /etc/vinyl-inventory.env
+```
+
+The service can write its persisted JSON and temporary files only under
+`/var/lib/vinyl-inventory`; its output is in the system journal. Changing `ADMIN_PASSWORD`
+requires a service restart. Restarting creates a fresh in-memory session service, invalidates
+existing browser sessions, and does not alter the collection:
+
+```sh
+sudoedit /etc/vinyl-inventory.env
+sudo systemctl restart vinyl-inventory.service
+sudo systemctl is-active --quiet vinyl-inventory.service
+curl --fail --silent --show-error http://127.0.0.1:8080/health
+```
+
+The service is intended for a trusted LAN over HTTP. Use the LAN-reachable address (not
+`localhost`) when opening the Home Screen on a shared tablet or generating a phone QR. Do not
+expose the port through forwarding, a public hostname, or a public reverse proxy.
 
 Verify the first start and collection response:
 
@@ -57,13 +79,13 @@ sudo journalctl -u vinyl-inventory.service -n 50 --no-pager
 ## Backup-first update
 
 Set `RELEASE_TAG` to the exact release being installed; do not use a moving branch or alias.
-The archive is created outside the data directory and may contain Discogs credentials, so retain
-it as a secret.
+The archive is created outside the data directory and may contain Discogs credentials and a
+Visitor Wi-Fi passphrase in `siteSettings.json`, so retain it as a secret.
 
 ```sh
 set -eu
 
-RELEASE_TAG=v1.0.0
+RELEASE_TAG=v1.2.0
 BACKUP_DIR=/var/backups/vinyl-inventory
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 

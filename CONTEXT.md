@@ -18,3 +18,35 @@ _Avoid_: Linked/unlinked (used loosely elsewhere for other things), matched/unma
 **Discogs Credential**:
 A complete Discogs username and personal access token pair that the service uses for Discogs requests. An environment-provided pair is authoritative; a saved pair is a trusted-LAN fallback.
 _Avoid_: API key, login
+
+**Visitor**:
+A person invited to browse the collection without administrative access.
+_Avoid_: Guest user, public user
+
+**Collection Display**:
+A shared tablet or similar device that visitors can use to browse the collection or open it on their own device.
+_Avoid_: Admin device, kiosk
+
+**Home Screen**:
+The collection display's default visitor screen, offering a choice between browsing on that display and opening the collection on another device.
+_Avoid_: Welcome screen, share modal, landing page
+
+**Administrator**:
+The collection owner or another trusted person authenticated to change collection data and site settings.
+_Avoid_: Editor, edit-mode user
+
+**Admin Session**:
+An authenticated browser session that permits administrative actions without itself enabling record editing.
+_Avoid_: Edit mode, login mode
+
+**Edit Mode**:
+A deliberate interface state, available only during an admin session, that exposes controls for changing the collection.
+_Avoid_: Admin mode, authenticated mode
+
+**Visitor Wi-Fi Network**:
+The single wireless network an administrator chooses to share with visitors so they can reach the collection site.
+_Avoid_: Primary network, configured Wi-Fi
+
+**Site Setting**:
+An administrator-managed value that controls the collection site's behavior or visitor experience.
+_Avoid_: Config value, preference

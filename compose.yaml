@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/andreaskinga-lgtm/vinyl-inventory:v1.2.0
+    image: ghcr.io/andreaskinga-lgtm/vinyl-inventory:v2.0.0
     init: true
     restart: unless-stopped
     ports:
@@ -8,6 +8,7 @@ services:
     environment:
       NODE_ENV: production
       DATA_DIR: /data
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
       DISCOGS_USER: "${DISCOGS_USER:-}"
       DISCOGS_TOKEN: "${DISCOGS_TOKEN:-}"
     volumes:

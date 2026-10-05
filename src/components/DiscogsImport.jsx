@@ -1,11 +1,13 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { mapDiscogsRelease } from "../utils/discogsMapper";
+import { isAdministratorSessionError } from "../utils/apiErrors.js";
 import {
   beginSync,
   reducer,
   describePlan,
   emptyPlan,
 } from "../utils/syncPlan";
+import { canDismissDiscogsImport } from "../utils/discogsImportState.js";
 import "./DiscogsImport.css";
 
 const FIELD_LABELS = {
@@ -33,13 +35,7 @@ function Thumb({ url, alt = "" }) {
 
 function responseError(body, fallback) {
   if (body?.error === "Discogs credentials are required") {
-    return "Discogs credentials are required. Save credentials before fetching.";
-  }
-  if (
-    body?.error ===
-    "Discogs credentials are managed by the environment"
-  ) {
-    return "Discogs credentials are managed by the environment and cannot be changed.";
+    return "Discogs credentials are required. Configure them in Settings before fetching.";
   }
   return body?.error || fallback;
 }
@@ -48,22 +44,22 @@ function DiscogsImport({
   existingRecords,
   onImport,
   onClose,
+  onConfigureCredentials,
+  onSessionExpired,
   discogsConfig,
   discogsConfigLoading,
   discogsConfigError,
-  onSaveDiscogsConfig,
+  writeError = null,
 }) {
   // ── Phase "connect" state ──────────────────────────────────────────────
   const [phase, setPhase] = useState("connect");
-  const [savingCredentials, setSavingCredentials] = useState(false);
-  const [credentialsFormKey, setCredentialsFormKey] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null); // { page, totalPages }
   const username = discogsConfig?.username ?? "";
   const hasToken = discogsConfig?.hasToken ?? false;
   const source = discogsConfig?.source ?? "none";
-  const canEdit = discogsConfig?.canEdit ?? false;
   const configReady = discogsConfig !== null;
 
   // ── Phase "review" state ───────────────────────────────────────────────
@@ -83,6 +79,12 @@ function DiscogsImport({
   const [manualMatchSearch, setManualMatchSearch] = useState("");
   const [pickerAnchorY, setPickerAnchorY] = useState(null);
   const modalRef = useRef(null);
+  const canDismiss = canDismissDiscogsImport({ loading, syncing });
+
+  function handleClose() {
+    if (!canDismiss) return;
+    onClose();
+  }
 
   // ── Helpers ─────────────────────────────────────────────────────────
   function fetchPage(page, per_page) {
@@ -93,41 +95,13 @@ function DiscogsImport({
     return fetch(`/api/discogs/collection?${params}`);
   }
 
-  async function handleSaveCredentials(e) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const nextUsername = String(formData.get("username") ?? "").trim();
-    const nextToken = String(formData.get("token") ?? "").trim();
-
-    if (!nextUsername || !nextToken) {
-      setError("Username and personal access token are required.");
-      return;
-    }
-
-    setSavingCredentials(true);
-    setError(null);
-    try {
-      await onSaveDiscogsConfig({
-        username: nextUsername,
-        token: nextToken,
-      });
-      setCredentialsFormKey((key) => key + 1);
-    } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Unable to save Discogs credentials.",
-      );
-    } finally {
-      setSavingCredentials(false);
-    }
-  }
-
   // ── Fetch all pages ──────────────────────────────────────────────────
   async function handleFetch(e) {
     e.preventDefault();
     if (!hasToken) {
-      setError("Discogs credentials are required. Save credentials before fetching.");
+      setError(
+        "Discogs credentials are required. Configure them in Settings before fetching.",
+      );
       return;
     }
 
@@ -140,6 +114,9 @@ function DiscogsImport({
       const firstResp = await fetchPage(1, 100);
       if (!firstResp.ok) {
         const body = await firstResp.json().catch(() => ({}));
+        if (isAdministratorSessionError(firstResp.status, body)) {
+          onSessionExpired?.();
+        }
         throw new Error(
           responseError(
             body,
@@ -157,6 +134,9 @@ function DiscogsImport({
         const resp = await fetchPage(page, 100);
         if (!resp.ok) {
           const body = await resp.json().catch(() => ({}));
+          if (isAdministratorSessionError(resp.status, body)) {
+            onSessionExpired?.();
+          }
           throw new Error(
             responseError(body, `HTTP ${resp.status} on page ${page}`),
           );
@@ -212,18 +192,32 @@ function DiscogsImport({
   }
 
   // ── Sync ───────────────────────────────────────────────────────────
-  function handleSync() {
-    onImport(view.toImport, view.updates, view.deletions);
+  async function handleSync() {
+    if (syncing) return;
+    setSyncing(true);
+    setError(null);
+    try {
+      await onImport(view.toImport, view.updates, view.deletions);
+    } catch (errorValue) {
+      setError(
+        errorValue instanceof Error && errorValue.message
+          ? errorValue.message
+          : "Unable to save the imported collection.",
+      );
+    } finally {
+      setSyncing(false);
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────
   return (
     <div
       className="discogs-import-overlay"
-      onClick={onClose}
+      onClick={canDismiss ? handleClose : undefined}
       role="dialog"
       aria-modal="true"
       aria-label="Sync with Discogs"
+      aria-busy={syncing}
     >
       <div
         className={`discogs-import-modal${phase === "review" ? " discogs-import-modal--wide" : ""}`}
@@ -235,8 +229,14 @@ function DiscogsImport({
           <h3>Sync with Discogs</h3>
           <button
             className="discogs-import-close"
-            onClick={onClose}
+            onClick={handleClose}
+            disabled={!canDismiss}
             aria-label="Close"
+            title={
+              canDismiss
+                ? undefined
+                : "Wait for the current Discogs save to finish."
+            }
           >
             ✕
           </button>
@@ -284,83 +284,29 @@ function DiscogsImport({
                   Discogs requests use the saved account{" "}
                   <strong>{username}</strong>.
                 </span>
+                <span className="discogs-field-hint">
+                  A saved token is on file and is never shown in Sync.
+                </span>
               </div>
             )}
 
             {!discogsConfigLoading && configReady && source === "none" && (
               <div className="discogs-credential-state discogs-credential-state--none">
-                <strong>Discogs credentials are not configured</strong>
-                <span>Save a username and personal access token to connect.</span>
+                <strong>Discogs configuration required</strong>
+                <span>
+                  An administrator must configure a username and personal
+                  access token in Settings before Sync can connect.
+                </span>
+                <button
+                  type="button"
+                  className="primary-btn"
+                  onClick={onConfigureCredentials}
+                  disabled={loading}
+                >
+                  Open Discogs settings
+                </button>
               </div>
             )}
-
-            {!discogsConfigLoading &&
-              configReady &&
-              canEdit &&
-              source !== "environment" && (
-                <form
-                  key={credentialsFormKey}
-                  className="discogs-credentials-form"
-                  onSubmit={handleSaveCredentials}
-                >
-                  <h4>
-                    {source === "saved"
-                      ? "Update saved credentials"
-                      : "Configure Discogs credentials"}
-                  </h4>
-                  <div className="discogs-field">
-                    <label className="discogs-field-label" htmlFor="discogs-username">
-                      Discogs username
-                    </label>
-                    <input
-                      id="discogs-username"
-                      name="username"
-                      type="text"
-                      defaultValue={username}
-                      placeholder="your_username"
-                      autoComplete="username"
-                      autoFocus={source === "none"}
-                      required
-                    />
-                  </div>
-
-                  <div className="discogs-field">
-                    <label className="discogs-field-label" htmlFor="discogs-token">
-                      Personal access token
-                    </label>
-                    <input
-                      id="discogs-token"
-                      name="token"
-                      type="password"
-                      placeholder={
-                        source === "saved"
-                          ? "Enter a new token to replace the saved one"
-                          : "Paste your token here"
-                      }
-                      autoComplete="new-password"
-                      required
-                    />
-                    <span className="discogs-field-hint">
-                      Generate a token at{" "}
-                      <a
-                        href="https://www.discogs.com/settings/developers"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        discogs.com/settings/developers
-                      </a>
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="primary-btn"
-                    disabled={savingCredentials || loading}
-                  >
-                    {savingCredentials ? "Saving…" : "Save credentials"}
-                  </button>
-                </form>
-              )}
 
             {(error || discogsConfigError) && (
               <p className="discogs-error">{error || discogsConfigError}</p>
@@ -378,15 +324,15 @@ function DiscogsImport({
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={onClose}
-                  disabled={loading || savingCredentials}
+                  onClick={handleClose}
+                  disabled={!canDismiss}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="primary-btn"
-                  disabled={loading || savingCredentials || !configReady || !hasToken}
+                  disabled={loading || !configReady || !hasToken}
                 >
                   {loading ? "Fetching…" : "Fetch Collection"}
                 </button>
@@ -955,11 +901,17 @@ function DiscogsImport({
                 {/* Footer */}
                 <div className="discogs-import-footer">
                   <span className="discogs-summary">{view.summary}</span>
+                  {(writeError || error) && (
+                    <p className="discogs-error" role="alert">
+                      {writeError || error}
+                    </p>
+                  )}
                   <div className="discogs-import-actions">
                     <button
                       type="button"
                       className="cancel-btn"
-                      onClick={onClose}
+                      onClick={handleClose}
+                      disabled={!canDismiss}
                     >
                       Cancel
                     </button>
@@ -968,12 +920,13 @@ function DiscogsImport({
                       className="primary-btn"
                       onClick={handleSync}
                       disabled={
+                        syncing ||
                         view.counts.imports === 0 &&
                         view.counts.updates === 0 &&
                         view.counts.deletions === 0
                       }
                     >
-                      Sync
+                      {syncing ? "Saving…" : "Sync"}
                     </button>
                   </div>
                 </div>

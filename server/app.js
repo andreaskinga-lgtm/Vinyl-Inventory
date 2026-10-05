@@ -2,6 +2,7 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createAuthService } from "./auth.js";
 import { createApiHandler } from "./api-handler.js";
 
 const SERVER_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -69,15 +70,24 @@ function sendJsonError(res, status, error) {
   res.status(status).json({ error });
 }
 
-export function createApp({ config, fetch: fetchImpl = globalThis.fetch }) {
+export function createApp({
+  config,
+  fetch: fetchImpl = globalThis.fetch,
+  auth,
+}) {
   const distDirectory = config.distDir ?? DEFAULT_DIST_DIRECTORY;
   const app = express();
+  const sessionService =
+    auth ??
+    config.auth ??
+    createAuthService({ credential: config.adminCredential });
 
   app.use(
     createApiHandler({
       dataDir: config.dataDir,
       fetch: fetchImpl,
       discogsEnvironment: config.discogsEnvironment,
+      auth: sessionService,
     }),
   );
 

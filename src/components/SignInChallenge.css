@@ -1,0 +1,115 @@
+.sign-in-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.sign-in-dialog {
+  width: min(420px, 100%);
+  padding: 1.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background-color: var(--color-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.sign-in-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sign-in-eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--color-accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sign-in-dialog h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 5vw, 1.7rem);
+  line-height: 1.15;
+}
+
+.sign-in-close {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sign-in-copy {
+  margin: 1rem 0 1.2rem;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.sign-in-error {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 107, 107, 0.45);
+  border-radius: 8px;
+  background-color: rgba(255, 107, 107, 0.1);
+  color: var(--color-danger);
+  font-size: 0.86rem;
+}
+
+.sign-in-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.sign-in-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-input);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.sign-in-input:focus {
+  outline: 2px solid var(--color-focus);
+  border-color: transparent;
+}
+
+.sign-in-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.sign-in-actions button {
+  min-height: 44px;
+}
+
+.sign-in-submit {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: #241704;
+  font-weight: 700;
+}
+
+.sign-in-submit:hover {
+  border-color: var(--color-accent-hover);
+  background-color: var(--color-accent-hover);
+}

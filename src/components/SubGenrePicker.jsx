@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { appendSubGenreSelection } from "../utils/subGenrePicker.js";
 import "./SubGenrePicker.css";
 
 function SubGenrePicker({
@@ -11,8 +12,12 @@ function SubGenrePicker({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [pendingOption, setPendingOption] = useState(null);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  const valueRef = useRef(value);
+  const pendingOptionRef = useRef(null);
+  valueRef.current = value;
 
   const filtered = options.filter(
     (o) => !value.includes(o) && o.toLowerCase().includes(query.toLowerCase()),
@@ -29,19 +34,27 @@ function SubGenrePicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function addItem(item) {
-    onChange([...value, item]);
+  function commitItem(item) {
+    onChange(appendSubGenreSelection(valueRef.current, item));
     setQuery("");
     setOpen(true);
     setHighlightIndex(0);
     inputRef.current?.focus();
   }
 
-  function removeItem(item) {
-    onChange(value.filter((v) => v !== item));
+  function addItem(item) {
+    if (pendingOptionRef.current !== null) return;
+    commitItem(item);
   }
 
-  function handleKeyDown(e) {
+  function removeItem(item) {
+    if (pendingOptionRef.current !== null) return;
+    onChange(valueRef.current.filter((v) => v !== item));
+  }
+
+  async function handleKeyDown(e) {
+    if (pendingOptionRef.current !== null) return;
+
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setOpen(true);
@@ -55,13 +68,33 @@ function SubGenrePicker({
         addItem(filtered[highlightIndex]);
       } else if (query.trim() && !value.includes(query.trim())) {
         const newItem = query.trim();
-        onAddNew?.(newItem);
-        addItem(newItem);
+        if (!onAddNew || pendingOptionRef.current !== null) return;
+        pendingOptionRef.current = newItem;
+        setPendingOption(newItem);
+        try {
+          const added = await onAddNew(newItem);
+          if (added !== false) commitItem(newItem);
+        } finally {
+          pendingOptionRef.current = null;
+          setPendingOption(null);
+        }
       }
     } else if (e.key === "Backspace" && query === "" && value.length > 0) {
       removeItem(value[value.length - 1]);
     } else if (e.key === "Escape") {
       setOpen(false);
+    }
+  }
+
+  async function handleDeleteOption(item) {
+    if (!onDeleteOption || pendingOptionRef.current !== null) return;
+    pendingOptionRef.current = item;
+    setPendingOption(item);
+    try {
+      await onDeleteOption(item);
+    } finally {
+      pendingOptionRef.current = null;
+      setPendingOption(null);
     }
   }
 
@@ -79,6 +112,7 @@ function SubGenrePicker({
                   e.stopPropagation();
                   removeItem(v);
                 }}
+                disabled={pendingOption !== null}
                 aria-label={`Remove ${v}`}
               >
                 ×
@@ -96,6 +130,7 @@ function SubGenrePicker({
           type="text"
           className="subgenre-picker-text"
           value={query}
+          disabled={pendingOption !== null}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -129,8 +164,9 @@ function SubGenrePicker({
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    onDeleteOption(item);
+                    void handleDeleteOption(item);
                   }}
+                  disabled={pendingOption !== null}
                   aria-label={`Delete ${item}`}
                 >
                   ×

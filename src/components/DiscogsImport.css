@@ -113,52 +113,12 @@
   border-color: var(--color-accent);
 }
 
-.discogs-credentials-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 0.25rem;
-}
-
-.discogs-credentials-form h4 {
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.discogs-credentials-form button {
+.discogs-credential-state button {
   align-self: flex-start;
 }
 
 .discogs-fetch-form {
   margin: 0;
-}
-
-.discogs-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.discogs-field-label {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-}
-
-.discogs-field input[type="text"],
-.discogs-field input[type="password"] {
-  padding: 0.6rem 0.8rem;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-input);
-  color: inherit;
-  font-size: 0.95rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.discogs-field input:focus {
-  outline: 2px solid var(--color-focus);
-  border-color: transparent;
 }
 
 .discogs-field-hint {

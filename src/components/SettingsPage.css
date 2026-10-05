@@ -1,0 +1,428 @@
+.settings-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: clamp(1rem, 4vw, 3rem);
+  background:
+    radial-gradient(
+      60% 35% at 10% 0%,
+      rgba(232, 163, 61, 0.12),
+      transparent 70%
+    ),
+    var(--color-page-bg);
+}
+
+.settings-page-header {
+  width: min(1100px, 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 1.5rem;
+}
+
+.settings-page h1 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.settings-eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--color-accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.settings-cancel {
+  min-height: 44px;
+  border-color: var(--color-border);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.settings-cancel:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.settings-layout {
+  width: min(1100px, 100%);
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: clamp(1.2rem, 4vw, 3rem);
+  margin: 0 auto;
+}
+
+.settings-index {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settings-index button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 48px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+.settings-index button:hover,
+.settings-index button.is-active {
+  border-color: var(--color-border);
+  background-color: var(--color-input);
+  color: var(--color-text);
+}
+
+.settings-index button.is-active {
+  border-color: var(--color-accent);
+}
+
+.settings-tabs {
+  display: none;
+}
+
+.settings-status {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: 0.67rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.settings-status--dirty {
+  color: var(--color-accent);
+}
+
+.settings-status--saving {
+  color: var(--color-text-secondary);
+}
+
+.settings-status--success {
+  color: var(--color-success);
+}
+
+.settings-status--validation-error,
+.settings-status--server-error {
+  color: var(--color-danger);
+}
+
+.settings-editor-wrap {
+  min-width: 0;
+}
+
+.settings-editor {
+  max-width: 680px;
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background-color: rgba(27, 25, 23, 0.86);
+}
+
+.settings-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.settings-editor h2 {
+  margin: 0;
+  font-size: clamp(1.15rem, 3vw, 1.6rem);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.86rem;
+}
+
+.settings-field input,
+.settings-field select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-input);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+  outline: 2px solid var(--color-focus);
+  border-color: transparent;
+}
+
+.settings-field small,
+.settings-danger-zone p,
+.settings-readonly-state span,
+.settings-credential-status {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.settings-field .settings-field-error,
+.settings-checkbox .settings-field-error {
+  color: var(--color-danger);
+}
+
+.settings-secret-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+
+.settings-reveal {
+  min-width: 76px;
+  min-height: 44px;
+  padding-inline: 0.7rem;
+  border-color: var(--color-border);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.settings-checkbox {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0.5rem 0 1.25rem;
+  color: var(--color-text-secondary);
+  font-size: 0.86rem;
+}
+
+.settings-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+}
+
+.settings-checkbox .settings-field-error {
+  flex-basis: 100%;
+  margin-left: calc(18px + 0.55rem);
+}
+
+.settings-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.6rem;
+}
+
+.settings-editor-actions button {
+  min-height: 44px;
+}
+
+.settings-primary-action {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: #241704;
+  font-weight: 700;
+}
+
+.settings-primary-action:hover {
+  border-color: var(--color-accent-hover);
+  background-color: var(--color-accent-hover);
+}
+
+.settings-secondary-action {
+  border-color: var(--color-border);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.settings-inline-error,
+.settings-load-error {
+  margin: 0.75rem 0 0;
+  color: var(--color-danger);
+  font-size: 0.86rem;
+}
+
+.settings-load-error {
+  width: min(1100px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-inline: auto;
+}
+
+.settings-load-error button {
+  min-height: 44px;
+  border-color: var(--color-border);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.settings-success {
+  margin: 0.75rem 0 0;
+  color: var(--color-success);
+  font-size: 0.86rem;
+}
+
+.settings-danger-zone {
+  margin-top: 2.2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-danger-zone p {
+  margin: 0.35rem 0;
+}
+
+.settings-danger-title {
+  color: var(--color-text-secondary) !important;
+  font-size: 0.9rem !important;
+  font-weight: 700;
+}
+
+.settings-danger-action {
+  min-height: 44px;
+  margin-top: 0.7rem;
+  border-color: rgba(255, 107, 107, 0.5);
+  background-color: transparent;
+  color: var(--color-danger);
+}
+
+.settings-danger-action:hover {
+  border-color: var(--color-danger);
+  background-color: rgba(255, 107, 107, 0.1);
+}
+
+.settings-confirm-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+.settings-confirm-actions button {
+  margin-top: 0;
+}
+
+.settings-readonly-state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid var(--color-success);
+  border-radius: 10px;
+  background-color: rgba(76, 175, 80, 0.08);
+}
+
+.settings-readonly-state strong {
+  color: var(--color-success);
+}
+
+.settings-loading {
+  padding: 2rem 0;
+  color: var(--color-text-muted);
+}
+
+.settings-warning-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+}
+
+.settings-warning-dialog {
+  width: min(440px, 100%);
+  padding: 1.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.settings-warning-dialog h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.settings-warning-dialog p {
+  color: var(--color-text-secondary);
+}
+
+.settings-warning-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.settings-warning-actions button {
+  min-height: 44px;
+}
+
+@media (max-width: 759px) {
+  .settings-page {
+    padding: 1rem;
+  }
+
+  .settings-layout {
+    display: block;
+  }
+
+  .settings-index {
+    display: none;
+  }
+
+  .settings-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .settings-tabs button {
+    min-height: 44px;
+    padding: 0.45rem 0.3rem;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+  }
+
+  .settings-tabs button.is-active {
+    border-color: var(--color-accent);
+    background-color: var(--color-input);
+    color: var(--color-text);
+  }
+
+  .settings-editor-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .settings-editor-actions button {
+    width: 100%;
+  }
+}

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+import { createAuthService } from "./server/auth.js";
 import { createApiHandler } from "./server/api-handler.js";
 import { loadConfig } from "./server/config.js";
 
@@ -10,10 +11,14 @@ function apiPlugin() {
     name: "api-adapter",
     configureServer(server) {
       const config = loadConfig();
+      const auth = createAuthService({
+        credential: config.adminCredential,
+      });
       const apiHandler = createApiHandler({
         dataDir: config.dataDir,
         fetch: globalThis.fetch,
         discogsEnvironment: config.discogsEnvironment,
+        auth,
       });
 
       server.middlewares.use(apiHandler);
@@ -45,7 +50,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Vinyl Collection",
         short_name: "Vinyl",
-        description: "Browse and manage your vinyl record collection",
+        description: "Explore a shared vinyl record collection",
         start_url: "/",
         display: "standalone",
         background_color: "#242424",

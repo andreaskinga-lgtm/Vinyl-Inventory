@@ -60,6 +60,23 @@ describe("createJsonStore initialization", () => {
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("returns Site Settings defaults without creating the optional file", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    const store = createJsonStore({ dataDir });
+
+    await expect(store.readSiteSettings()).resolves.toEqual({
+      schemaVersion: 1,
+      visitorDisplay: {
+        idleTimeoutMinutes: 3,
+      },
+      wifi: null,
+    });
+    await expect(access(siteSettingsPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
   it("fails explicitly when required JSON is invalid and identifies its backup", async () => {
     const dataDir = await createTemporaryDirectory();
     const primaryPath = path.join(dataDir, "records.json");
@@ -114,6 +131,156 @@ describe("createJsonStore resources", () => {
     await expect(store.readDiscogsConfig()).resolves.toEqual(discogsConfig);
   });
 
+  it("creates Site Settings only on first write and reads the saved document back", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    const store = createJsonStore({ dataDir });
+    const siteSettings = {
+      schemaVersion: 1,
+      visitorDisplay: {
+        idleTimeoutMinutes: 12,
+      },
+      wifi: null,
+    };
+
+    await expect(access(siteSettingsPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await store.writeSiteSettings(siteSettings);
+
+    await expect(readJson(siteSettingsPath)).resolves.toEqual(siteSettings);
+    await expect(store.readSiteSettings()).resolves.toEqual(siteSettings);
+  });
+
+  it("reads a validated configured Wi-Fi section without dropping unrelated settings", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const store = createJsonStore({ dataDir });
+    const siteSettings = {
+      schemaVersion: 1,
+      visitorDisplay: {
+        idleTimeoutMinutes: 7,
+      },
+      wifi: {
+        security: "wpa",
+        ssid: "Café network",
+        password: "0123456789abcdef".repeat(4),
+        hidden: true,
+      },
+      futureSetting: "must remain private",
+    };
+
+    await store.writeSiteSettings(siteSettings);
+
+    await expect(store.readSiteSettings()).resolves.toEqual(siteSettings);
+  });
+
+  it("rejects an unsupported stored Site Settings document instead of using defaults", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    await writeFile(
+      siteSettingsPath,
+      JSON.stringify({
+        schemaVersion: 2,
+        visitorDisplay: { idleTimeoutMinutes: 3 },
+        wifi: null,
+      }),
+    );
+    const store = createJsonStore({ dataDir });
+
+    await expect(store.readSiteSettings()).rejects.toThrow(
+      `Invalid Site Settings in ${siteSettingsPath}`,
+    );
+  });
+
+  it("rejects malformed optional Site Settings JSON instead of using defaults", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    await writeFile(siteSettingsPath, "{not json");
+    const store = createJsonStore({ dataDir });
+
+    await expect(store.readSiteSettings()).rejects.toThrow(
+      `Invalid JSON in ${siteSettingsPath}`,
+    );
+  });
+
+  it("rejects a stored Visitor Display timeout outside the supported whole-minute range", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    await writeFile(
+      siteSettingsPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        visitorDisplay: { idleTimeoutMinutes: 0 },
+        wifi: null,
+      }),
+    );
+    const store = createJsonStore({ dataDir });
+
+    await expect(store.readSiteSettings()).rejects.toThrow(
+      `Invalid Site Settings in ${siteSettingsPath}`,
+    );
+  });
+
+  it("rejects a stored Wi-Fi section that violates its security rules", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    await writeFile(
+      siteSettingsPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        visitorDisplay: { idleTimeoutMinutes: 3 },
+        wifi: {
+          security: "wep",
+          ssid: "Legacy network",
+          password: "password",
+          hidden: false,
+        },
+      }),
+    );
+    const store = createJsonStore({ dataDir });
+
+    await expect(store.readSiteSettings()).rejects.toThrow(
+      `Invalid Site Settings in ${siteSettingsPath}`,
+    );
+  });
+
+  it("rejects invalid Site Settings writes without creating or replacing the file", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    const store = createJsonStore({ dataDir });
+
+    await expect(
+      store.writeSiteSettings({
+        schemaVersion: 1,
+        visitorDisplay: { idleTimeoutMinutes: 31 },
+        wifi: null,
+      }),
+    ).rejects.toThrow(`Invalid Site Settings in ${siteSettingsPath}`);
+    await expect(access(siteSettingsPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("retains the previous valid Site Settings document as the backup", async () => {
+    const dataDir = await createTemporaryDirectory();
+    const siteSettingsPath = path.join(dataDir, "siteSettings.json");
+    const store = createJsonStore({ dataDir });
+    const settings = (idleTimeoutMinutes) => ({
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes },
+      wifi: null,
+    });
+
+    await store.writeSiteSettings(settings(3));
+    await store.writeSiteSettings(settings(4));
+    await store.writeSiteSettings(settings(5));
+
+    await expect(readJson(siteSettingsPath)).resolves.toEqual(settings(5));
+    await expect(readJson(`${siteSettingsPath}.bak`)).resolves.toEqual(
+      settings(4),
+    );
+  });
+
   it("serializes parallel writes to the same resource in request order", async () => {
     const dataDir = await createTemporaryDirectory();
     let releaseFirstWrite;
@@ -152,6 +319,128 @@ describe("createJsonStore resources", () => {
 
     expect(writes).toEqual([[{ id: "older" }], [{ id: "newer" }]]);
     await expect(store.readRecords()).resolves.toEqual([{ id: "newer" }]);
+  });
+
+  it("serializes queued Site Settings writes and leaves the newest document readable", async () => {
+    const dataDir = await createTemporaryDirectory();
+    let releaseFirstWrite;
+    const firstWriteBlocked = new Promise((resolve) => {
+      releaseFirstWrite = resolve;
+    });
+    let signalFirstWriteStarted;
+    const firstWriteStarted = new Promise((resolve) => {
+      signalFirstWriteStarted = resolve;
+    });
+    const writes = [];
+    let blockWrites = false;
+    const writeJson = vi.fn(async ({ filePath, value }) => {
+      if (blockWrites && filePath.endsWith("siteSettings.json")) {
+        writes.push(value);
+        if (writes.length === 1) {
+          signalFirstWriteStarted();
+          await firstWriteBlocked;
+        }
+      }
+      await atomicWriteJson({ filePath, value });
+    });
+    const store = createJsonStore({ dataDir, writeJson });
+    await store.initialize();
+    writeJson.mockClear();
+    blockWrites = true;
+
+    const olderSettings = {
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes: 4 },
+      wifi: null,
+    };
+    const newerSettings = {
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes: 5 },
+      wifi: null,
+    };
+    const olderWrite = store.writeSiteSettings(olderSettings);
+    await firstWriteStarted;
+    const newerWrite = store.writeSiteSettings(newerSettings);
+
+    await Promise.resolve();
+    expect(writes).toEqual([olderSettings]);
+    releaseFirstWrite();
+    await Promise.all([olderWrite, newerWrite]);
+
+    expect(writes).toEqual([olderSettings, newerSettings]);
+    await expect(store.readSiteSettings()).resolves.toEqual(newerSettings);
+  });
+
+  it("serializes Site Settings read-modify-write updates against the latest document", async () => {
+    const dataDir = await createTemporaryDirectory();
+    let releaseFirstWrite;
+    const firstWriteBlocked = new Promise((resolve) => {
+      releaseFirstWrite = resolve;
+    });
+    let signalFirstWriteStarted;
+    const firstWriteStarted = new Promise((resolve) => {
+      signalFirstWriteStarted = resolve;
+    });
+    const writes = [];
+    let blockWrites = false;
+    const writeJson = vi.fn(async ({ filePath, value }) => {
+      if (blockWrites && filePath.endsWith("siteSettings.json")) {
+        writes.push(value);
+        if (writes.length === 1) {
+          signalFirstWriteStarted();
+          await firstWriteBlocked;
+        }
+      }
+      await atomicWriteJson({ filePath, value });
+    });
+    const store = createJsonStore({ dataDir, writeJson });
+    const initialSettings = {
+      schemaVersion: 1,
+      visitorDisplay: { idleTimeoutMinutes: 3 },
+      wifi: null,
+    };
+    await store.writeSiteSettings(initialSettings);
+    writeJson.mockClear();
+    blockWrites = true;
+
+    const displayUpdate = store.updateSiteSettings((settings) => ({
+      ...settings,
+      visitorDisplay: { idleTimeoutMinutes: 9 },
+    }));
+    await firstWriteStarted;
+    const wifiUpdate = store.updateSiteSettings((settings) => ({
+      ...settings,
+      wifi: {
+        security: "open",
+        ssid: "Visitor network",
+        password: "",
+        hidden: false,
+      },
+    }));
+
+    await Promise.resolve();
+    expect(writes).toHaveLength(1);
+    releaseFirstWrite();
+    await Promise.all([displayUpdate, wifiUpdate]);
+
+    expect(writes).toEqual([
+      {
+        schemaVersion: 1,
+        visitorDisplay: { idleTimeoutMinutes: 9 },
+        wifi: null,
+      },
+      {
+        schemaVersion: 1,
+        visitorDisplay: { idleTimeoutMinutes: 9 },
+        wifi: {
+          security: "open",
+          ssid: "Visitor network",
+          password: "",
+          hidden: false,
+        },
+      },
+    ]);
+    await expect(store.readSiteSettings()).resolves.toEqual(writes[1]);
   });
 });
 

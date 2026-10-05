@@ -1,6 +1,17 @@
 import querystring from "node:querystring";
 
+import {
+  ADMIN_SESSION_COOKIE_NAME,
+  createAuthService,
+  serializeClearedSessionCookie,
+  serializeSessionCookie,
+} from "./auth.js";
 import { createJsonStore } from "./json-store.js";
+import {
+  buildWifiQrPayload,
+  normalizeWifiSettings,
+  WifiSettingsValidationError,
+} from "../src/utils/wifiPayload.js";
 
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json",
@@ -43,6 +54,77 @@ function sendJson(res, status, payload, headers = {}) {
 
 function requestPath(req) {
   return new URL(req.url ?? "/", "http://localhost").pathname;
+}
+
+function cookieValue(req, name) {
+  const header = req.headers?.cookie ?? req.headers?.Cookie ?? "";
+  for (const part of header.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator < 0) continue;
+    const key = part.slice(0, separator).trim();
+    if (key !== name) continue;
+    try {
+      return decodeURIComponent(part.slice(separator + 1).trim());
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function isSecureRequest(req) {
+  return (
+    req.secure === true ||
+    req.protocol === "https" ||
+    req.socket?.encrypted === true
+  );
+}
+
+function requestOrigin(req) {
+  const protocol = isSecureRequest(req) ? "https" : "http";
+  const host = req.headers?.host ?? "localhost";
+  return `${protocol}://${host}`;
+}
+
+function isSameOriginRequest(req) {
+  const origin = req.headers?.origin ?? req.headers?.Origin;
+  const referer = req.headers?.referer ?? req.headers?.Referer;
+  const suppliedOrigin = origin || referer;
+
+  if (!suppliedOrigin) {
+    return false;
+  }
+
+  try {
+    const actualOrigin = new URL(suppliedOrigin).origin;
+    return actualOrigin === new URL(requestOrigin(req)).origin;
+  } catch {
+    return false;
+  }
+}
+
+function requireAdminSession(
+  req,
+  res,
+  sessionService,
+  { stateChanging = false } = {},
+) {
+  const authenticated = sessionService.authenticateSession(
+    cookieValue(req, ADMIN_SESSION_COOKIE_NAME),
+  );
+  if (!authenticated) {
+    sendJson(res, 401, {
+      error: "Administrator authentication required",
+    });
+    return false;
+  }
+
+  if (stateChanging && !isSameOriginRequest(req)) {
+    sendJson(res, 403, { error: "Forbidden" });
+    return false;
+  }
+
+  return true;
 }
 
 function isObject(value) {
@@ -108,6 +190,48 @@ function genreOptionsFromBody(body) {
   };
 }
 
+function visitorDisplayFromBody(body) {
+  const section =
+    isObject(body) && isObject(body.visitorDisplay)
+      ? body.visitorDisplay
+      : body;
+  if (!isObject(section)) {
+    throw new ApiRequestError("visitorDisplay must be an object");
+  }
+
+  const { idleTimeoutMinutes } = section;
+  if (
+    !Number.isInteger(idleTimeoutMinutes) ||
+    idleTimeoutMinutes < 1 ||
+    idleTimeoutMinutes > 30
+  ) {
+    throw new ApiRequestError(
+      "visitorDisplay.idleTimeoutMinutes must be a whole number from 1 through 30",
+    );
+  }
+
+  return { idleTimeoutMinutes };
+}
+
+function wifiFromBody(body) {
+  const section =
+    isObject(body) && isObject(body.wifi) ? body.wifi : body;
+  try {
+    const normalized = normalizeWifiSettings(section);
+    return {
+      security: normalized.security,
+      ssid: normalized.ssid,
+      password: normalized.password,
+      hidden: normalized.hidden,
+    };
+  } catch (error) {
+    if (error instanceof WifiSettingsValidationError) {
+      throw new ApiRequestError(error.message);
+    }
+    throw error;
+  }
+}
+
 function discogsCredentialFrom(value) {
   if (
     !isObject(value) ||
@@ -122,14 +246,25 @@ function discogsCredentialFrom(value) {
   return username && token ? { username, token } : null;
 }
 
-function discogsCredentialFromBody(body) {
-  const credential = discogsCredentialFrom(body);
-  if (!credential) {
+function discogsCredentialForSaveBody(body) {
+  if (
+    !isObject(body) ||
+    typeof body.username !== "string" ||
+    typeof body.token !== "string"
+  ) {
     throw new ApiRequestError(
       "username and token must be non-empty strings",
     );
   }
-  return credential;
+
+  const username = body.username.trim();
+  const token = body.token.trim();
+  if (!username) {
+    throw new ApiRequestError(
+      "username and token must be non-empty strings",
+    );
+  }
+  return { username, token };
 }
 
 function assertStoredRecords(records) {
@@ -184,6 +319,83 @@ async function handleGenreOptions(req, res, store) {
   sendJson(res, 405, { error: "Method not allowed" }, { Allow: "GET, POST" });
 }
 
+async function handleSiteSettings(req, res, store) {
+  if (req.method === "GET") {
+    sendJson(res, 200, await store.readSiteSettings());
+    return;
+  }
+
+  sendJson(res, 405, { error: "Method not allowed" }, { Allow: "GET" });
+}
+
+async function handleVisitorDisplaySettings(req, res, store) {
+  if (req.method !== "PUT") {
+    sendJson(res, 405, { error: "Method not allowed" }, { Allow: "PUT" });
+    return;
+  }
+
+  const visitorDisplay = visitorDisplayFromBody(await readJsonBody(req));
+  await store.updateSiteSettings((settings) => ({
+    ...settings,
+    visitorDisplay,
+  }));
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleWifiSettings(req, res, store) {
+  if (req.method !== "PUT") {
+    sendJson(
+      res,
+      405,
+      { error: "Method not allowed" },
+      { Allow: "PUT, DELETE" },
+    );
+    return;
+  }
+
+  const wifi = wifiFromBody(await readJsonBody(req));
+  await store.updateSiteSettings((settings) => ({
+    ...settings,
+    wifi,
+  }));
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleWifiSettingsDelete(req, res, store) {
+  if (req.method !== "DELETE") {
+    sendJson(res, 405, { error: "Method not allowed" }, { Allow: "DELETE" });
+    return;
+  }
+
+  await store.updateSiteSettings((settings) => ({
+    ...settings,
+    wifi: null,
+  }));
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleVisitorSettings(req, res, store) {
+  if (req.method === "GET") {
+    const settings = await store.readSiteSettings();
+    const wifi = settings.wifi
+      ? {
+          ssid: settings.wifi.ssid,
+          password: settings.wifi.password,
+          security: settings.wifi.security,
+          hidden: settings.wifi.hidden,
+          qrPayload: buildWifiQrPayload(settings.wifi),
+        }
+      : null;
+    sendJson(res, 200, {
+      idleTimeoutMinutes: settings.visitorDisplay.idleTimeoutMinutes,
+      wifi,
+    });
+    return;
+  }
+
+  sendJson(res, 405, { error: "Method not allowed" }, { Allow: "GET" });
+}
+
 function isMalformedStoredJson(error) {
   return error instanceof Error && error.cause instanceof SyntaxError;
 }
@@ -222,7 +434,8 @@ async function handleDiscogsConfig(
       discogsEnvironment,
     );
     sendJson(res, 200, {
-      username: credential?.username ?? "",
+      username:
+        credential?.source === "saved" ? credential.username : "",
       hasToken: credential !== null,
       source: credential?.source ?? "none",
       canEdit: credential?.source !== "environment",
@@ -238,13 +451,46 @@ async function handleDiscogsConfig(
       return;
     }
 
-    const credential = discogsCredentialFromBody(await readJsonBody(req));
+    const submitted = discogsCredentialForSaveBody(
+      await readJsonBody(req),
+    );
+    let credential = submitted;
+    if (!submitted.token) {
+      const savedCredential = await resolveDiscogsCredential(store, null);
+      if (!savedCredential || savedCredential.source !== "saved") {
+        throw new ApiRequestError(
+          "username and token must be non-empty strings",
+        );
+      }
+      credential = {
+        username: submitted.username,
+        token: savedCredential.token,
+      };
+    }
     await store.writeDiscogsConfig(credential);
     sendJson(res, 200, { ok: true });
     return;
   }
 
-  sendJson(res, 405, { error: "Method not allowed" }, { Allow: "GET, POST" });
+  if (req.method === "DELETE") {
+    if (discogsCredentialFrom(discogsEnvironment)) {
+      sendJson(res, 409, {
+        error: "Discogs credentials are managed by the environment",
+      });
+      return;
+    }
+
+    await store.writeDiscogsConfig(null);
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  sendJson(
+    res,
+    405,
+    { error: "Method not allowed" },
+    { Allow: "GET, POST, DELETE" },
+  );
 }
 
 function discogsHeaders(token) {
@@ -385,6 +631,11 @@ async function handleDiscogsProxy(
 
   const ok = upstreamResponse?.ok ?? (status >= 200 && status < 300);
   if (!ok) {
+    if (status === 401) {
+      throw new DiscogsUpstreamError(
+        "Discogs credentials were rejected by the upstream service",
+      );
+    }
     sendJson(res, status, {
       error: `Discogs request failed with status ${status}`,
     });
@@ -589,8 +840,15 @@ export function createApiHandler({
   dataDir,
   fetch: fetchImpl = globalThis.fetch,
   discogsEnvironment = null,
+  auth,
+  authService,
+  adminCredential,
 }) {
   const store = createJsonStore({ dataDir });
+  const sessionService =
+    auth ??
+    authService ??
+    createAuthService({ credential: adminCredential });
 
   return async function apiHandler(req, res, next) {
     const pathname = requestPath(req);
@@ -600,7 +858,126 @@ export function createApiHandler({
       return;
     }
 
+    if (pathname === "/api/auth/session") {
+      if (req.method !== "GET") {
+        sendJson(
+          res,
+          405,
+          { error: "Method not allowed" },
+          { Allow: "GET" },
+        );
+        return;
+      }
+
+      sendJson(res, 200, {
+        configured: sessionService.configured,
+        authenticated: sessionService.authenticateSession(
+          cookieValue(req, ADMIN_SESSION_COOKIE_NAME),
+        ),
+      });
+      return;
+    }
+
+    if (pathname === "/api/auth/login") {
+      if (req.method !== "POST") {
+        sendJson(
+          res,
+          405,
+          { error: "Method not allowed" },
+          { Allow: "POST" },
+        );
+        return;
+      }
+
+      let password;
+      try {
+        const body = await readJsonBody(req);
+        password = body?.password;
+      } catch {
+        password = undefined;
+      }
+      const result = sessionService.login(password);
+      if (result.authenticated) {
+        sendJson(
+          res,
+          200,
+          { authenticated: true },
+          {
+            "Set-Cookie": serializeSessionCookie(result.token, {
+              secure: isSecureRequest(req),
+            }),
+          },
+        );
+        return;
+      }
+      if (result.reason === "invalid") {
+        sendJson(res, 401, {
+          error: "Invalid administrator password",
+        });
+        return;
+      }
+      if (result.reason === "unconfigured") {
+        sendJson(res, 409, {
+          error: "Administrator access is not configured",
+        });
+        return;
+      }
+      if (result.reason === "cooldown") {
+        const retryAfterMs = Math.max(0, result.retryAfterMs ?? 0);
+        sendJson(
+          res,
+          429,
+          {
+            error: "Too many failed login attempts",
+            retryAfterMs,
+          },
+          { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+        );
+        return;
+      }
+    }
+
+    if (pathname === "/api/auth/logout") {
+      if (req.method !== "POST") {
+        sendJson(
+          res,
+          405,
+          { error: "Method not allowed" },
+          { Allow: "POST" },
+        );
+        return;
+      }
+
+      const token = cookieValue(req, ADMIN_SESSION_COOKIE_NAME);
+      if (sessionService.authenticateSession(token)) {
+        if (!isSameOriginRequest(req)) {
+          sendJson(res, 403, { error: "Forbidden" });
+          return;
+        }
+        sessionService.revokeSession(token);
+      }
+      sendJson(
+        res,
+        200,
+        { authenticated: false },
+        {
+          "Set-Cookie": serializeClearedSessionCookie({
+            secure: isSecureRequest(req),
+          }),
+        },
+      );
+      return;
+    }
+
     if (pathname === "/api/records") {
+      if (
+        req.method === "POST" &&
+        !requireAdminSession(req, res, sessionService, {
+          stateChanging: true,
+        })
+      ) {
+        return;
+      }
       try {
         await handleRecords(req, res, store);
       } catch (error) {
@@ -614,6 +991,14 @@ export function createApiHandler({
     }
 
     if (pathname === "/api/genre-options") {
+      if (
+        req.method === "POST" &&
+        !requireAdminSession(req, res, sessionService, {
+          stateChanging: true,
+        })
+      ) {
+        return;
+      }
       try {
         await handleGenreOptions(req, res, store);
       } catch (error) {
@@ -626,7 +1011,87 @@ export function createApiHandler({
       return;
     }
 
+    if (pathname === "/api/site-settings") {
+      if (
+        req.method === "GET" &&
+        !requireAdminSession(req, res, sessionService)
+      ) {
+        return;
+      }
+      try {
+        await handleSiteSettings(req, res, store);
+      } catch (error) {
+        sendJson(res, 500, { error: storageErrorMessage(error) });
+      }
+      return;
+    }
+
+    if (pathname === "/api/site-settings/visitor-display") {
+      if (
+        req.method === "PUT" &&
+        !requireAdminSession(req, res, sessionService, {
+          stateChanging: true,
+        })
+      ) {
+        return;
+      }
+      try {
+        await handleVisitorDisplaySettings(req, res, store);
+      } catch (error) {
+        if (error instanceof ApiRequestError) {
+          sendJson(res, 400, { error: error.message });
+          return;
+        }
+        sendJson(res, 500, { error: storageErrorMessage(error) });
+      }
+      return;
+    }
+
+    if (pathname === "/api/site-settings/wifi") {
+      if (
+        (req.method === "PUT" || req.method === "DELETE") &&
+        !requireAdminSession(req, res, sessionService, {
+          stateChanging: true,
+        })
+      ) {
+        return;
+      }
+      try {
+        if (req.method === "DELETE") {
+          await handleWifiSettingsDelete(req, res, store);
+        } else {
+          await handleWifiSettings(req, res, store);
+        }
+      } catch (error) {
+        if (error instanceof ApiRequestError) {
+          sendJson(res, 400, { error: error.message });
+          return;
+        }
+        sendJson(res, 500, { error: storageErrorMessage(error) });
+      }
+      return;
+    }
+
+    if (pathname === "/api/visitor-settings") {
+      try {
+        await handleVisitorSettings(req, res, store);
+      } catch (error) {
+        sendJson(res, 500, { error: storageErrorMessage(error) });
+      }
+      return;
+    }
+
     if (pathname === "/api/discogs-config") {
+      if (
+        (req.method === "GET" ||
+          req.method === "POST" ||
+          req.method === "DELETE") &&
+        !requireAdminSession(req, res, sessionService, {
+          stateChanging: req.method !== "GET",
+        })
+      ) {
+        return;
+      }
       try {
         await handleDiscogsConfig(
           req,
@@ -649,6 +1114,13 @@ export function createApiHandler({
       pathname === "/api/discogs/search" ||
       pathname === "/api/discogs/release"
     ) {
+      if (
+        pathname === "/api/discogs/collection" &&
+        req.method === "GET" &&
+        !requireAdminSession(req, res, sessionService)
+      ) {
+        return;
+      }
       try {
         await handleDiscogsProxy(
           req,

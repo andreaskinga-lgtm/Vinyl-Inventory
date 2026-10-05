@@ -9,11 +9,17 @@ import {
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { GENRES, SUB_GENRES } from "../src/data/genreOptions.js";
+import {
+  createDefaultSiteSettings,
+  normalizeSiteSettings,
+  SiteSettingsValidationError,
+} from "./site-settings.js";
 
 const RESOURCE_FILES = Object.freeze({
   records: "records.json",
   genreOptions: "genreOptions.json",
   discogsConfig: "discogsConfig.json",
+  siteSettings: "siteSettings.json",
 });
 
 function backupPathFor(filePath) {
@@ -30,6 +36,13 @@ function invalidJsonError(filePath, cause) {
 function missingRequiredJsonError(filePath) {
   return new Error(
     `Missing required JSON file ${filePath}; a backup may be available at ${backupPathFor(filePath)}`,
+  );
+}
+
+function invalidSiteSettingsError(filePath, cause) {
+  return new Error(
+    `Invalid Site Settings in ${filePath}; a backup may be available at ${backupPathFor(filePath)}`,
+    { cause },
   );
 }
 
@@ -208,17 +221,39 @@ export function createJsonStore({
     return parseJson(contents, filePath);
   }
 
-  function writeResource(resource, value, { serializedValue } = {}) {
+  async function readSiteSettingsWithoutQueue() {
+    const filePath = resourcePath("siteSettings");
+    const contents = await readExistingFile(filePath);
+    if (contents === null) {
+      return createDefaultSiteSettings();
+    }
+    const settings = parseJson(contents, filePath);
+    try {
+      return normalizeSiteSettings(settings);
+    } catch (error) {
+      if (error instanceof SiteSettingsValidationError) {
+        throw invalidSiteSettingsError(filePath, error);
+      }
+      throw error;
+    }
+  }
+
+  async function readSiteSettings() {
+    await initialize();
+    const queuedWrite = writeQueues.get("siteSettings");
+    if (queuedWrite) {
+      await queuedWrite;
+    }
+    return readSiteSettingsWithoutQueue();
+  }
+
+  function queueResourceOperation(resource, operation) {
     const priorWrite = writeQueues.get(resource) ?? Promise.resolve();
     const currentWrite = priorWrite
       .catch(() => {})
       .then(async () => {
         await initialize();
-        await writeJson({
-          filePath: resourcePath(resource),
-          value,
-          serializedValue,
-        });
+        return operation();
       });
     writeQueues.set(resource, currentWrite);
 
@@ -229,6 +264,44 @@ export function createJsonStore({
     };
     currentWrite.then(clearQueue, clearQueue);
     return currentWrite;
+  }
+
+  function writeResource(resource, value, { serializedValue } = {}) {
+    return queueResourceOperation(resource, () =>
+      writeJson({
+        filePath: resourcePath(resource),
+        value,
+        serializedValue,
+      }),
+    );
+  }
+
+  function updateSiteSettings(update) {
+    if (typeof update !== "function") {
+      throw new TypeError("Site Settings updater must be a function");
+    }
+
+    return queueResourceOperation("siteSettings", async () => {
+      const current = await readSiteSettingsWithoutQueue();
+      const next = await update(current);
+      let normalized;
+      try {
+        normalized = normalizeSiteSettings(next);
+      } catch (error) {
+        if (error instanceof SiteSettingsValidationError) {
+          throw invalidSiteSettingsError(
+            resourcePath("siteSettings"),
+            error,
+          );
+        }
+        throw error;
+      }
+      await writeJson({
+        filePath: resourcePath("siteSettings"),
+        value: normalized,
+      });
+      return normalized;
+    });
   }
 
   async function verifyWritable() {
@@ -261,5 +334,22 @@ export function createJsonStore({
       readResource("discogsConfig", { optional: true }),
     writeDiscogsConfig: (discogsConfig, options) =>
       writeResource("discogsConfig", discogsConfig, options),
+    readSiteSettings,
+    writeSiteSettings: async (siteSettings) => {
+      let normalized;
+      try {
+        normalized = normalizeSiteSettings(siteSettings);
+      } catch (error) {
+        if (error instanceof SiteSettingsValidationError) {
+          throw invalidSiteSettingsError(
+            resourcePath("siteSettings"),
+            error,
+          );
+        }
+        throw error;
+      }
+      return writeResource("siteSettings", normalized);
+    },
+    updateSiteSettings,
   });
 }
