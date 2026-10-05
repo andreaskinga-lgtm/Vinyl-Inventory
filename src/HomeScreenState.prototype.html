@@ -1809,17 +1809,18 @@
       function renderFreePlay() {
         freePlay.innerHTML = actionGroups
           .map(
-            (group) => `
+            (group, groupIndex) => `
               <div class="action-group">
                 <h3>${group.heading}</h3>
                 <div class="button-grid">
                   ${group.actions
                     .map(
-                      (action) => `
+                      (action, actionIndex) => `
                         <button
                           class="action-button ${action.className ?? ""}"
                           type="button"
-                          data-free-action='${JSON.stringify(action)}'
+                          data-group-index="${groupIndex}"
+                          data-action-index="${actionIndex}"
                         >
                           ${action.label}
                         </button>
@@ -1832,9 +1833,13 @@
           )
           .join("");
 
-        freePlay.querySelectorAll("[data-free-action]").forEach((button) => {
+        freePlay.querySelectorAll("[data-action-index]").forEach((button) => {
           button.addEventListener("click", () => {
-            const action = JSON.parse(button.dataset.freeAction);
+            const action = {
+              ...actionGroups[Number(button.dataset.groupIndex)].actions[
+                Number(button.dataset.actionIndex)
+              ],
+            };
             delete action.label;
             delete action.className;
             dispatch(action);
