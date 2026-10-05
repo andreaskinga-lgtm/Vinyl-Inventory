@@ -57,6 +57,6 @@ Illegal transitions must be visible rather than silently accepted.
 ## Comments
 
 - Prototype ready for human review in `src/HomeScreenState.prototype.html`.
-- Primary-source branch: `prototype/home-screen-visitor-state-model` at commit `032409d`.
+- Primary-source branch: `prototype/home-screen-visitor-state-model` at commit `2bb8a55`.
 - No verdict or production transition-rule changes have been selected yet. Record those here only
   after review.
